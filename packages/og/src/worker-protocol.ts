@@ -12,5 +12,6 @@ export type WorkerResponse =
 
 export interface WorkerRuntimeData {
   exportName: string
+  factoryModule?: string
   module: string
 }

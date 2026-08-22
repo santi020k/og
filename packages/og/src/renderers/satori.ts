@@ -1,9 +1,12 @@
+import { fileURLToPath } from 'node:url'
+
 import { Resvg } from '@resvg/resvg-js'
 import satori, { type SatoriOptions } from 'satori'
 import { html as createHtml } from 'satori-html'
 import sharp from 'sharp'
 
-import type { OgRenderContext, OgRenderer } from '../types.js'
+import type { WorkerRendererOptions } from '../config.js'
+import type { OgRenderContext, OgRenderer, OgWorkerRenderer } from '../types.js'
 
 import type { SharpRendererOptions } from './sharp.js'
 
@@ -61,5 +64,15 @@ export const createSatoriRenderer = <T>(options: SatoriRendererOptions<T>): OgRe
     }
   }
 )
+
+/** Create workers directly from a module exporting SatoriRendererOptions. */
+export const createSatoriWorkerRenderer = <T = unknown>(
+  options: WorkerRendererOptions
+): OgWorkerRenderer<T> => ({
+  exportName: options.exportName ?? 'default',
+  factoryModule: fileURLToPath(new URL('./satori-worker-factory.js', import.meta.url)),
+  kind: 'worker',
+  module: options.module instanceof URL ? fileURLToPath(options.module) : options.module
+})
 
 export type { SatoriOptions }

@@ -5,11 +5,20 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 
+import { compare } from './compare.js'
 import { generate } from './generate.js'
 import type { OgConfig } from './types.js'
 
-const VERSION = '0.1.0'
-const CONFIG_NAMES = ['og.config.mjs', 'og.config.js', 'og.config.ts'] as const
+const VERSION = '0.2.0'
+
+const CONFIG_NAMES = [
+  'og.config.mjs',
+  'og.config.js',
+  'og.config.ts',
+  'scripts/og.config.mjs',
+  'scripts/generate-og-images.mjs'
+] as const
+
 const toUnknown = (value: unknown): unknown => value
 
 const help = `\
@@ -20,10 +29,11 @@ Generate deterministic Open Graph images from a project-owned config.
 Usage:
   santi-og generate [options]
   santi-og check [options]
+  santi-og compare [options]
   santi-og init [options]
 
 Options:
-  --config <path>       Config path (default: discover og.config.mjs or .js)
+  --config <path>       Config file or package directory (default: discover config)
   --concurrency <n>     Active renders, or "auto"
   --force               Regenerate every card
   --clean               Remove outputs for cards deleted from the config
@@ -45,12 +55,32 @@ const exists = async (filePath: string): Promise<boolean> => {
 }
 
 const findConfig = async (requested: string | undefined): Promise<string> => {
-  if (requested) return path.resolve(requested)
+  const base = path.resolve(requested ?? '.')
+
+  if (requested && !await exists(path.join(base, 'package.json'))) return base
 
   for (const name of CONFIG_NAMES) {
-    const candidate = path.resolve(name)
+    const candidate = path.resolve(base, name)
 
     if (await exists(candidate)) return candidate
+  }
+
+  const packagePath = path.join(base, 'package.json')
+
+  if (await exists(packagePath)) {
+    const packageManifest = toUnknown(JSON.parse(await readFile(packagePath, 'utf8')))
+
+    if (typeof packageManifest === 'object' && packageManifest !== null) {
+      const configured = (packageManifest as Record<string, unknown>)['santi-og']
+
+      if (typeof configured === 'string') return path.resolve(base, configured)
+
+      if (typeof configured === 'object' && configured !== null && 'config' in configured) {
+        const config = (configured as { config?: unknown }).config
+
+        if (typeof config === 'string') return path.resolve(base, config)
+      }
+    }
   }
 
   throw new Error('No OG config found. Run "santi-og init" or pass --config.')
@@ -170,6 +200,26 @@ const executeGeneration = async (
   const config = commandOptions.clean ? { ...loaded, clean: true } : loaded
   const concurrency = parseConcurrency(commandOptions.concurrency)
 
+  if (command === 'compare') {
+    const comparisons = await compare(config, {
+      configFingerprint: configContents,
+      ...(concurrency === undefined ? {} : { concurrency })
+    })
+
+    for (const comparison of comparisons) {
+      const actual = `${comparison.actual.width ?? '?'}x${comparison.actual.height ?? '?'} ${comparison.actual.format ?? 'unknown'} ${comparison.actual.bytes} B`
+      const expected = comparison.expected ? `, previous ${comparison.expected.bytes} B` : ''
+
+      const pixels = comparison.pixelDifference ?
+        `, pixels ${comparison.pixelDifference.different}/${comparison.pixelDifference.total} (${(comparison.pixelDifference.ratio * 100).toFixed(4)}%)` :
+        ''
+
+      process.stdout.write(`  ${comparison.status.padEnd(9)} ${comparison.output}: ${actual}${expected}${pixels}\n`)
+    }
+
+    return
+  }
+
   const result = await generate(config, {
     check: command === 'check',
     configFingerprint: configContents,
@@ -224,7 +274,9 @@ const run = async (): Promise<void> => {
 
   const command = parsed.positionals[0] ?? 'generate'
 
-  if (!['check', 'generate', 'init'].includes(command)) throw new Error(`Unknown command: ${command}`)
+  if (!['check', 'compare', 'generate', 'init'].includes(command)) {
+    throw new Error(`Unknown command: ${command}`)
+  }
 
   if (command === 'init') {
     await initialize(parsed.values.config)

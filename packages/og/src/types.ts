@@ -2,13 +2,33 @@ export type Awaitable<T> = Promise<T> | T
 
 export type OgFormat = 'avif' | 'jpeg' | 'jpg' | 'png' | 'svg' | 'webp'
 
+export type OgSourceCollection = readonly string[] | (() => Awaitable<readonly string[]>)
+
+export interface OgOutputTarget {
+  /** Named directory from outputDirectories. Omit to use outputDirectory. */
+  directory?: string
+  /** Path relative to the selected output directory. */
+  output: string
+}
+
+export interface OgAsset extends OgOutputTarget {
+  /** Source file, absolute or relative to the project root. */
+  source: string
+  /** Additional destinations that receive the same bytes. */
+  aliases?: readonly (string | OgOutputTarget)[]
+}
+
 export interface OgCard<T = unknown> {
+  /** Additional destinations that receive the rendered bytes without rendering again. */
+  aliases?: readonly (string | OgOutputTarget)[]
   /** Data passed to the renderer. It also participates in the cache fingerprint. */
   data: T
   /** Output path relative to outputDirectory, including its extension. */
   output: string
+  /** Named directory from outputDirectories. Omit to use outputDirectory. */
+  outputDirectory?: string
   /** Additional files whose contents invalidate this card. */
-  sources?: readonly string[]
+  sources?: OgSourceCollection
   /** Optional per-card dimensions. */
   height?: number
   width?: number
@@ -31,6 +51,8 @@ export type OgRenderer<T = unknown> = (
 
 export interface OgWorkerRenderer<T = unknown> {
   readonly exportName: string
+  /** Internal renderer factory loaded inside each worker. */
+  readonly factoryModule?: string
   readonly kind: 'worker'
   readonly module: string
   /** Type-only marker that makes descriptors preserve the card data type. */
@@ -43,10 +65,21 @@ export interface OgCacheOptions {
   /** Cache manifest path relative to the project root. */
   manifest?: string
   /** Template, font, logo, or asset files shared by every card. */
-  sources?: readonly string[]
+  /** Paths, glob patterns, or a callback returning either. Absolute paths are supported. */
+  sources?: OgSourceCollection
 }
 
+export interface OgAutoConcurrency {
+  /** Upper bound applied after detecting available CPUs. */
+  max?: number
+  mode: 'auto'
+}
+
+export type OgConcurrency = number | 'auto' | OgAutoConcurrency
+
 export interface OgConfig<T = unknown> {
+  /** Static assets copied alongside rendered cards. */
+  assets?: readonly OgAsset[] | (() => Awaitable<readonly OgAsset[]>)
   /** Cards or an asynchronous card collector. */
   cards: readonly OgCard<T>[] | (() => Awaitable<readonly OgCard<T>[]>)
   /** Renderer function or worker-module descriptor. */
@@ -56,11 +89,13 @@ export interface OgConfig<T = unknown> {
   /** Remove outputs previously tracked by this tool when their cards disappear. */
   clean?: boolean
   /** Maximum active renders. Defaults to 1 for functions and available CPUs for workers. */
-  concurrency?: number | 'auto'
+  concurrency?: OgConcurrency
   /** Default image height. */
   height?: number
   /** Output directory relative to the project root. Defaults to public/og. */
   outputDirectory?: string
+  /** Additional named output directories, relative to root. */
+  outputDirectories?: Readonly<Record<string, string>>
   /** Project root. CLI configs default to the directory containing the config. */
   root?: string
   /** Default image width. */
@@ -73,11 +108,13 @@ export interface GenerateOptions {
   /** Config-file contents or another value that should invalidate every card. */
   configFingerprint?: string
   /** Override the configured concurrency. */
-  concurrency?: number | 'auto'
+  concurrency?: OgConcurrency
   /** Regenerate every card. */
   force?: boolean
   /** Receives progress events. */
   onEvent?: (event: OgEvent) => void
+  /** @internal Redirect outputs and the manifest for non-destructive comparisons. */
+  stagingDirectory?: string
 }
 
 export type OgEvent =

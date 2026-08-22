@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -46,4 +46,34 @@ test('version matches the package manifest', async () => {
   assert.equal(result.code, 0, result.stderr)
 
   assert.equal(result.stdout.trim(), packageManifest.version)
+})
+
+test('discovers a package-level config shorthand and compares without writing', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'santi-og-cli-package-'))
+
+  try {
+    await writeFile(
+      path.join(root, 'package.json'),
+      JSON.stringify({ 'santi-og': { config: 'scripts/cards.mjs' } })
+    )
+
+    await mkdir(path.join(root, 'scripts'))
+
+    await writeFile(path.join(root, 'scripts/cards.mjs'), `export default {
+  cards: [{ data: { title: 'Package' }, output: 'index.svg' }],
+  renderer: data => \`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">\${data.title}</svg>\`,
+}\n`)
+
+    const cli = path.resolve('dist/cli.js')
+    const generated = await run(process.execPath, [cli, 'generate'], root)
+    const compared = await run(process.execPath, [cli, 'compare'], root)
+
+    assert.equal(generated.code, 0, generated.stderr)
+
+    assert.equal(compared.code, 0, compared.stderr)
+
+    assert.match(compared.stdout, /identical\s+index\.svg/)
+  } finally {
+    await rm(root, { force: true, recursive: true })
+  }
 })

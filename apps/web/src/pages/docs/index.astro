@@ -25,7 +25,8 @@ const packageScripts = `{
   "scripts": {
     "generate:og": "santi-og generate",
     "generate:og:force": "santi-og generate --force",
-    "check:og": "santi-og check"
+    "check:og": "santi-og check",
+    "compare:og": "santi-og compare"
   }
 }`
 
@@ -95,7 +96,7 @@ const workerExample = `import { defineConfig, defineWorkerRenderer } from '@sant
 
 export default defineConfig({
   cards: collectCards,
-  concurrency: 'auto',
+  concurrency: { mode: 'auto', max: 16 },
   renderer: defineWorkerRenderer({
     module: new URL('./scripts/render-og-card.mjs', import.meta.url),
   }),
@@ -165,7 +166,7 @@ const ciExample = `- name: Generate Open Graph images
           <h2>Configuration</h2>
           <p>Create <code>og.config.mjs</code>, <code>og.config.js</code>, or <code>og.config.ts</code> in your project root. The config can contain a static card array or collect cards asynchronously from Markdown, a CMS, or any other source.</p>
           <pre><code>{configuration}</code></pre>
-          <p>Card <code>data</code> accepts any serializable shape. Each card can override its dimensions and declare additional source files. The output extension selects SVG, PNG, WebP, JPEG, or AVIF encoding.</p>
+          <p>Card <code>data</code> accepts any serializable shape. Each card can override its dimensions, declare source paths, globs, or callbacks, and list same-format output aliases. Relative and absolute source paths are supported. The output extension selects SVG, PNG, WebP, JPEG, or AVIF encoding.</p>
         </section>
 
         <section id="sharp">
@@ -189,13 +190,13 @@ const ciExample = `- name: Generate Open Graph images
           <h2>Large collections</h2>
           <p>For hundreds of cards, export a renderer from a separate module and let the CLI create a bounded worker pool.</p>
           <pre><code>{workerExample}</code></pre>
-          <p>The renderer module default-exports the same <code>(data, context) =&gt; output</code> function used by a regular config. Worker card data must support structured cloning. Set a fixed concurrency when CI or native image libraries have tight memory limits.</p>
+          <p>The renderer module default-exports the same <code>(data, context) =&gt; output</code> function used by a regular config. Worker card data must support structured cloning. Use <code>'auto'</code>, a detected concurrency capped with <code>{`{ mode: 'auto', max: 16 }`}</code>, or a fixed integer.</p>
         </section>
 
         <section id="cache-and-cleanup">
           <span class="docs-section-number">06</span>
           <h2>Cache and cleanup guarantees</h2>
-          <p>The default <code>.og-cache.json</code> fingerprint includes card data, dimensions, output name, config contents, and declared source-file contents. Worker renderer modules are included automatically.</p>
+          <p>The default <code>.og-cache.json</code> fingerprint includes card data, dimensions, destinations, config contents, and declared source-file contents. Worker modules and their static local imports are included automatically. Every output also has a content digest, so checks detect manual edits and corruption.</p>
           <div class="guarantee-grid">
             <div><span>Fingerprint</span><strong>Content-aware</strong><p>Only cards affected by a content or source change are rebuilt.</p></div>
             <div><span>Cleanup</span><strong>Tracked only</strong><p>Only obsolete files from the previous manifest may be removed.</p></div>
@@ -222,7 +223,8 @@ const ciExample = `- name: Generate Open Graph images
                 <tr><td><code>init</code></td><td>Create a starter configuration.</td></tr>
                 <tr><td><code>generate</code></td><td>Render changed cards and optionally clean tracked outputs.</td></tr>
                 <tr><td><code>check</code></td><td>Report missing or stale cards without mutation.</td></tr>
-                <tr><td><code>--config, -c</code></td><td>Use a specific configuration file.</td></tr>
+                <tr><td><code>compare</code></td><td>Report dimensions, format, size, and pixel differences without replacing files.</td></tr>
+                <tr><td><code>--config, -c</code></td><td>Use a specific configuration file or package directory.</td></tr>
                 <tr><td><code>--concurrency</code></td><td>Set active renders to a positive number or <code>auto</code>.</td></tr>
                 <tr><td><code>--force, -f</code></td><td>Regenerate every card regardless of its fingerprint.</td></tr>
                 <tr><td><code>--clean</code></td><td>Remove obsolete outputs tracked by the manifest.</td></tr>
@@ -242,12 +244,14 @@ const ciExample = `- name: Generate Open Graph images
               <tbody>
                 <tr><td><code>cards</code></td><td>Required</td><td>Cards or an asynchronous card collector.</td></tr>
                 <tr><td><code>renderer</code></td><td>Required</td><td>A renderer function or worker descriptor.</td></tr>
+                <tr><td><code>assets</code></td><td><code>[]</code></td><td>Static files copied and tracked alongside rendered cards.</td></tr>
                 <tr><td><code>outputDirectory</code></td><td><code>public/og</code></td><td>Output directory relative to the project root.</td></tr>
+                <tr><td><code>outputDirectories</code></td><td><code>{`{}`}</code></td><td>Additional named output directories for multi-app repositories.</td></tr>
                 <tr><td><code>width</code></td><td><code>1200</code></td><td>Default image width; cards may override it.</td></tr>
                 <tr><td><code>height</code></td><td><code>630</code></td><td>Default image height; cards may override it.</td></tr>
                 <tr><td><code>cache</code></td><td>Enabled</td><td>Boolean or cache options with manifest and shared sources.</td></tr>
                 <tr><td><code>clean</code></td><td><code>false</code></td><td>Remove obsolete outputs previously tracked by the tool.</td></tr>
-                <tr><td><code>concurrency</code></td><td>Renderer-based</td><td>Maximum active renders or <code>auto</code>.</td></tr>
+                <tr><td><code>concurrency</code></td><td>Renderer-based</td><td>Maximum active renders, <code>auto</code>, or bounded automatic concurrency.</td></tr>
                 <tr><td><code>root</code></td><td>Config directory</td><td>Project root used to resolve and constrain paths.</td></tr>
               </tbody>
             </table>
@@ -256,8 +260,8 @@ const ciExample = `- name: Generate Open Graph images
 
         <section class="docs-next">
           <span class="kicker">Go further</span>
-          <h2>Bring your existing renderer.</h2>
-          <p>Keep the design you already have and replace only the orchestration layer.</p>
+          <h2>Already generating OG images?</h2>
+          <p>Move your existing setup to <code>@santi020k/og</code> without rebuilding your card designs.</p>
           <a class="button" href="https://github.com/santi020k/og/blob/main/packages/og/docs/migrating-existing-projects.md">Read the migration guide <span>↗</span></a>
         </section>
       </article>

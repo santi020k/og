@@ -1,29 +1,67 @@
-import { access, mkdir, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { availableParallelism } from 'node:os'
 import path from 'node:path'
 
 import { mapConcurrent } from './concurrency.js'
 import { isWorkerRenderer } from './config.js'
-import { hashValues } from './hash.js'
-import { emptyManifest, readManifest, writeManifest } from './manifest.js'
+import { hashBuffer, hashValues } from './hash.js'
+import {
+  emptyManifest,
+  type OgManifestEntry,
+  readManifest,
+  writeManifest } from './manifest.js'
 import { getFormat, resolveInside } from './paths.js'
+import { collectTransitiveImports, expandSources } from './sources.js'
 import type {
   GenerateOptions,
   GenerateResult,
+  OgAsset,
   OgCacheOptions,
   OgCard,
+  OgConcurrency,
   OgConfig,
   OgEvent,
+  OgOutputTarget,
   OgRenderContext,
   OgRenderOutput
 } from './types.js'
 import { OgWorkerPool } from './worker-pool.js'
 
+interface Destination {
+  basePath: string
+  directory?: string
+  key: string
+  output: string
+  outputPath: string
+}
+
 interface PreparedCard<T> {
   card: OgCard<T>
   context: OgRenderContext
+  destinations: readonly Destination[]
   fingerprint: string
-  outputPath: string
+  kind: 'card'
+}
+
+interface PreparedAsset {
+  asset: OgAsset
+  destinations: readonly Destination[]
+  fingerprint: string
+  kind: 'asset'
+  sourcePath: string
+}
+
+type PreparedItem<T> = PreparedAsset | PreparedCard<T>
+
+interface CardSelection<T> {
+  skipped: string[]
+  stale: PreparedItem<T>[]
+  staleOutputs: string[]
+}
+
+interface RenderSession<T> {
+  close: () => Promise<void>
+  render: (item: PreparedCard<T>) => Promise<OgRenderOutput>
 }
 
 const fileExists = async (filePath: string): Promise<boolean> => {
@@ -52,10 +90,19 @@ const getCacheOptions = (cache: OgConfig['cache']): Required<OgCacheOptions> => 
   }
 }
 
-const getConcurrency = <T>(
-  config: OgConfig<T>,
-  options: GenerateOptions
-): number => {
+const autoConcurrency = (configured: Extract<OgConcurrency, 'auto' | object>): number => {
+  const detected = Math.max(1, availableParallelism())
+
+  if (configured === 'auto' || configured.max === undefined) return detected
+
+  if (!Number.isSafeInteger(configured.max) || configured.max < 1) {
+    throw new Error('OG automatic concurrency max must be a positive integer.')
+  }
+
+  return Math.min(detected, configured.max)
+}
+
+const getConcurrency = <T>(config: OgConfig<T>, options: GenerateOptions): number => {
   const configured = options.concurrency ?? config.concurrency
 
   if (typeof configured === 'number') {
@@ -66,13 +113,9 @@ const getConcurrency = <T>(
     return configured
   }
 
-  if (configured === 'auto') {
-    return Math.max(1, availableParallelism())
-  }
+  if (configured === 'auto' || typeof configured === 'object') return autoConcurrency(configured)
 
-  if (isWorkerRenderer(config.renderer)) {
-    return Math.max(1, availableParallelism())
-  }
+  if (isWorkerRenderer(config.renderer)) return autoConcurrency('auto')
 
   return 1
 }
@@ -85,114 +128,256 @@ const normalizeOutput = (output: OgRenderOutput): Buffer | string => {
 
 const emit = (options: GenerateOptions, event: OgEvent): void => options.onEvent?.(event)
 
-interface CardSelection<T> {
-  skipped: string[]
-  stale: PreparedCard<T>[]
-}
+const destinationKey = (target: OgOutputTarget): string => (
+  target.directory ? `${target.directory}:${target.output}` : target.output
+)
 
-interface RenderSession<T> {
-  close: () => Promise<void>
-  render: (item: PreparedCard<T>) => Promise<OgRenderOutput>
-}
+const destinationLabel = (destination: Pick<Destination, 'directory' | 'output'>): string => (
+  destinationKey(destination)
+)
 
-const prepareCards = async <T>(parameters: {
-  cards: readonly OgCard<T>[]
-  config: OgConfig<T>
-  globalSources: readonly string[]
-  nextEntries: Record<string, string>
-  options: GenerateOptions
-  outputDirectory: string
-  root: string
-  workerSources: readonly string[]
-}): Promise<PreparedCard<T>[]> => {
-  const outputNames = new Set<string>()
+const outputTarget = (output: string, directory: string | undefined): OgOutputTarget => ({
+  output,
+  ...(directory ? { directory } : {})
+})
 
-  return Promise.all(parameters.cards.map(async card => {
-    if (outputNames.has(card.output)) throw new Error(`Duplicate OG output: ${card.output}`)
+const resolveDirectories = <T>(
+  config: OgConfig<T>,
+  root: string,
+  stagingDirectory?: string
+): Map<string | undefined, string> => {
+  if (stagingDirectory) {
+    const staging = path.resolve(stagingDirectory)
+    const directories = new Map<string | undefined, string>([[undefined, path.join(staging, 'default')]])
 
-    outputNames.add(card.output)
-
-    const outputPath = resolveInside(parameters.outputDirectory, card.output, 'card output')
-
-    const context: OgRenderContext = {
-      format: getFormat(card.output),
-      height: card.height ?? parameters.config.height ?? 630,
-      outputPath,
-      root: parameters.root,
-      width: card.width ?? parameters.config.width ?? 1200
+    for (const name of Object.keys(config.outputDirectories ?? {})) {
+      directories.set(name, path.join(staging, 'named', name))
     }
 
-    const sources = [
-      ...parameters.globalSources,
-      ...parameters.workerSources,
-      ...(card.sources ?? []).map(source => path.resolve(parameters.root, source))
-    ]
+    return directories
+  }
 
-    const fingerprint = await hashValues([
-      'santi020k-og-cache-v1',
+  const directories = new Map<string | undefined, string>([
+    [undefined, resolveInside(root, config.outputDirectory ?? 'public/og', 'outputDirectory')]
+  ])
+
+  for (const [name, directory] of Object.entries(config.outputDirectories ?? {})) {
+    if (!name.trim() || name.includes(':')) throw new Error(`Invalid OG output directory name: ${name}`)
+
+    directories.set(name, resolveInside(root, directory, `outputDirectories.${name}`))
+  }
+
+  return directories
+}
+
+const resolveDestination = (
+  target: OgOutputTarget,
+  directories: ReadonlyMap<string | undefined, string>
+): Destination => {
+  const directory = directories.get(target.directory)
+
+  if (!directory) throw new Error(`Unknown OG output directory: ${target.directory ?? '(default)'}`)
+
+  return {
+    ...(target.directory ? { directory: target.directory } : {}),
+    basePath: directory,
+    key: destinationKey(target),
+    output: target.output,
+    outputPath: resolveInside(directory, target.output, `output ${destinationKey(target)}`)
+  }
+}
+
+const resolveDestinations = (
+  primary: OgOutputTarget,
+  aliases: readonly (OgOutputTarget | string)[] | undefined,
+  directories: ReadonlyMap<string | undefined, string>
+): Destination[] => [primary, ...(aliases ?? []).map(alias => (
+  typeof alias === 'string' ? outputTarget(alias, primary.directory) : alias
+))].map(target => resolveDestination(target, directories))
+
+const assertUniqueDestinations = <T>(items: readonly PreparedItem<T>[]): void => {
+  const paths = new Set<string>()
+
+  for (const item of items) {
+    for (const destination of item.destinations) {
+      if (paths.has(destination.outputPath)) {
+        throw new Error(`Duplicate OG output: ${destinationLabel(destination)}`)
+      }
+
+      paths.add(destination.outputPath)
+    }
+  }
+}
+
+const withSourceContext = async <T>(label: string, operation: () => Promise<T>): Promise<T> => {
+  try {
+    return await operation()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+
+    throw new Error(`${label}: ${message}`, { cause: error })
+  }
+}
+
+const prepareCard = async <T>(parameters: {
+  card: OgCard<T>
+  config: OgConfig<T>
+  directories: ReadonlyMap<string | undefined, string>
+  globalSources: readonly string[]
+  options: GenerateOptions
+  root: string
+  workerSources: readonly string[]
+}): Promise<PreparedCard<T>> => {
+  const { card } = parameters
+  const primary = outputTarget(card.output, card.outputDirectory)
+  const destinations = resolveDestinations(primary, card.aliases, parameters.directories)
+  const format = getFormat(card.output)
+
+  for (const alias of destinations.slice(1)) {
+    const aliasFormat = getFormat(alias.output)
+
+    const compatible = aliasFormat === format ||
+      (['jpeg', 'jpg'].includes(aliasFormat) && ['jpeg', 'jpg'].includes(format))
+
+    if (!compatible) {
+      throw new Error(`OG alias must use the same format as ${destinationKey(primary)}: ${destinationLabel(alias)}`)
+    }
+  }
+
+  const context: OgRenderContext = {
+    format,
+    height: card.height ?? parameters.config.height ?? 630,
+    outputPath: destinations[0]?.outputPath ?? '',
+    root: parameters.root,
+    width: card.width ?? parameters.config.width ?? 1200
+  }
+
+  const cardSources = await expandSources(card.sources, parameters.root, destinationKey(primary))
+  const sources = [...parameters.globalSources, ...parameters.workerSources, ...cardSources]
+
+  const fingerprint = await withSourceContext(
+    `Unable to fingerprint OG card ${destinationKey(primary)}`,
+    () => hashValues([
+      'santi020k-og-cache-v2',
       parameters.options.configFingerprint ?? '',
-      card.output,
+      destinations.map(destination => destination.key),
       card.data,
       context.height,
       context.width
     ], sources)
+  )
 
-    parameters.nextEntries[card.output] = fingerprint
-
-    return { card, context, fingerprint, outputPath }
-  }))
+  return { card, context, destinations, fingerprint, kind: 'card' }
 }
 
-const selectCards = async <T>(
-  prepared: readonly PreparedCard<T>[],
-  previousEntries: Readonly<Record<string, string>>,
+const prepareAsset = async (parameters: {
+  asset: OgAsset
+  directories: ReadonlyMap<string | undefined, string>
+  options: GenerateOptions
+  root: string
+}): Promise<PreparedAsset> => {
+  const { asset } = parameters
+  const destinations = resolveDestinations(asset, asset.aliases, parameters.directories)
+  const sourcePath = path.resolve(parameters.root, asset.source)
+
+  const fingerprint = await withSourceContext(
+    `Unable to fingerprint OG asset ${destinationKey(asset)} from ${sourcePath}`,
+    () => hashValues([
+      'santi020k-og-asset-v1',
+      parameters.options.configFingerprint ?? '',
+      destinations.map(destination => destination.key)
+    ], [sourcePath])
+  )
+
+  return { asset, destinations, fingerprint, kind: 'asset', sourcePath }
+}
+
+const outputIsCurrent = async (
+  destination: Destination,
+  fingerprint: string,
+  previousEntry: OgManifestEntry | undefined,
+  cacheEnabled: boolean
+): Promise<boolean> => {
+  if (!cacheEnabled || previousEntry?.fingerprint !== fingerprint || !previousEntry.digest) return false
+
+  if (!await fileExists(destination.outputPath)) return false
+
+  return hashBuffer(await readFile(destination.outputPath)) === previousEntry.digest
+}
+
+const selectItems = async <T>(
+  prepared: readonly PreparedItem<T>[],
+  previousEntries: Readonly<Record<string, OgManifestEntry>>,
   cacheEnabled: boolean,
   options: GenerateOptions
 ): Promise<CardSelection<T>> => {
-  const selection: CardSelection<T> = { skipped: [], stale: [] }
+  const selection: CardSelection<T> = { skipped: [], stale: [], staleOutputs: [] }
 
   for (const item of prepared) {
-    const current = await fileExists(item.outputPath)
-    const unchanged = cacheEnabled && previousEntries[item.card.output] === item.fingerprint
+    const current = await Promise.all(item.destinations.map(destination => (
+      outputIsCurrent(destination, item.fingerprint, previousEntries[destination.key], cacheEnabled)
+    )))
 
-    if (!options.force && current && unchanged) {
-      selection.skipped.push(item.card.output)
+    if (!options.force && current.every(Boolean)) {
+      for (const destination of item.destinations) {
+        selection.skipped.push(destinationLabel(destination))
 
-      emit(options, { output: item.card.output, type: 'skip' })
+        emit(options, { output: destinationLabel(destination), type: 'skip' })
+      }
     } else {
       selection.stale.push(item)
+
+      item.destinations.forEach((destination, index) => {
+        if (options.force || !current[index]) selection.staleOutputs.push(destinationLabel(destination))
+      })
     }
   }
 
   return selection
 }
 
-const preserveTrackedOutputs = (
-  obsolete: readonly string[],
-  previousEntries: Readonly<Record<string, string>>,
-  nextEntries: Record<string, string>
-): void => {
-  for (const output of obsolete) {
-    const fingerprint = previousEntries[output]
+const manifestDestination = (
+  key: string,
+  entry: OgManifestEntry,
+  directories: ReadonlyMap<string | undefined, string>,
+  root: string
+): Destination => {
+  const target = outputTarget(entry.output ?? key, entry.directory)
 
-    if (fingerprint) nextEntries[output] = fingerprint
+  if (entry.directory && !directories.has(entry.directory) && entry.baseDirectory) {
+    const basePath = resolveInside(root, entry.baseDirectory, `tracked output directory ${entry.directory}`)
+
+    return {
+      basePath,
+      directory: entry.directory,
+      key,
+      output: target.output,
+      outputPath: resolveInside(basePath, target.output, `tracked output ${key}`)
+    }
   }
+
+  return resolveDestination(target, directories)
 }
 
 const cleanTrackedOutputs = async (
-  obsolete: readonly string[],
-  outputDirectory: string,
+  obsolete: readonly [string, OgManifestEntry][],
+  directories: ReadonlyMap<string | undefined, string>,
+  root: string,
   options: GenerateOptions
 ): Promise<string[]> => {
-  for (const output of obsolete) {
-    const outputPath = resolveInside(outputDirectory, output, 'tracked output')
+  const cleaned: string[] = []
 
-    await rm(outputPath, { force: true })
+  for (const [key, entry] of obsolete) {
+    const destination = manifestDestination(key, entry, directories, root)
 
-    emit(options, { output, type: 'clean' })
+    await rm(destination.outputPath, { force: true })
+
+    cleaned.push(key)
+
+    emit(options, { output: key, type: 'clean' })
   }
 
-  return [...obsolete]
+  return cleaned
 }
 
 const createRenderSession = <T>(
@@ -202,7 +387,13 @@ const createRenderSession = <T>(
 ): RenderSession<T> => {
   if (isWorkerRenderer(config.renderer)) {
     const pool = new OgWorkerPool(
-      { ...config.renderer, module: path.resolve(root, config.renderer.module) },
+      {
+        ...config.renderer,
+        ...(config.renderer.factoryModule ?
+          { factoryModule: path.resolve(root, config.renderer.factoryModule) } :
+          {}),
+        module: path.resolve(root, config.renderer.module)
+      },
       concurrency
     )
 
@@ -220,66 +411,135 @@ const createRenderSession = <T>(
   }
 }
 
-const renderCards = async <T>(
-  cards: readonly PreparedCard<T>[],
+const renderItems = async <T>(
+  items: readonly PreparedItem<T>[],
   concurrency: number,
   session: RenderSession<T>,
+  nextEntries: Record<string, OgManifestEntry>,
   options: GenerateOptions
-): Promise<string[]> => mapConcurrent(cards, concurrency, async item => {
-  const result = await session.render(item)
+): Promise<string[]> => {
+  const nested = await mapConcurrent(items, concurrency, async item => {
+    const label = destinationLabel(item.destinations[0] ?? { output: '(unknown)' })
 
-  await mkdir(path.dirname(item.outputPath), { recursive: true })
+    return withSourceContext(`Unable to write OG output ${label}`, async () => {
+      const output = normalizeOutput(
+        item.kind === 'asset' ? await readFile(item.sourcePath) : await session.render(item)
+      )
 
-  await writeFile(item.outputPath, normalizeOutput(result))
+      const digest = hashBuffer(output)
 
-  emit(options, { output: item.card.output, type: 'write' })
+      for (const destination of item.destinations) {
+        await mkdir(path.dirname(destination.outputPath), { recursive: true })
 
-  return item.card.output
-})
+        await writeFile(destination.outputPath, output)
+
+        const baseDirectory = nextEntries[destination.key]?.baseDirectory
+
+        nextEntries[destination.key] = {
+          ...(baseDirectory ? { baseDirectory } : {}),
+          digest,
+          fingerprint: item.fingerprint,
+          ...(destination.directory ? { directory: destination.directory } : {}),
+          output: destination.output
+        }
+
+        emit(options, { output: destinationLabel(destination), type: 'write' })
+      }
+
+      return item.destinations.map(destinationLabel)
+    })
+  })
+
+  return nested.flat()
+}
 
 export const generate = async <T>(
   config: OgConfig<T>,
   options: GenerateOptions = {}
 ): Promise<GenerateResult> => {
   const root = path.resolve(config.root ?? process.cwd())
-  const outputDirectory = resolveInside(root, config.outputDirectory ?? 'public/og', 'outputDirectory')
+  const directories = resolveDirectories(config, root, options.stagingDirectory)
   const cache = getCacheOptions(config.cache)
-  const manifestPath = resolveInside(root, cache.manifest, 'cache manifest')
+
+  const manifestPath = options.stagingDirectory ?
+    path.join(path.resolve(options.stagingDirectory), '.og-cache.json') :
+    resolveInside(root, cache.manifest, 'cache manifest')
+
   const cards = typeof config.cards === 'function' ? await config.cards() : config.cards
+  const assets = typeof config.assets === 'function' ? await config.assets() : (config.assets ?? [])
   const previousManifest = await readManifest(manifestPath)
   const nextManifest = emptyManifest()
-  const globalSources = cache.sources.map(source => path.resolve(root, source))
+  const globalSources = await expandSources(cache.sources, root, 'cache')
+  const workerDescriptor = isWorkerRenderer(config.renderer) ? config.renderer : undefined
 
-  const workerSources = isWorkerRenderer(config.renderer) ?
-    [path.resolve(root, config.renderer.module)] :
+  const workerEntries = workerDescriptor ?
+    [workerDescriptor.module, ...(workerDescriptor.factoryModule ? [workerDescriptor.factoryModule] : [])] :
     []
 
-  const prepared = await prepareCards({
-    cards,
+  const workerSources = (
+    await Promise.all(workerEntries.map(workerEntry => withSourceContext(
+      `Unable to inspect worker renderer ${path.resolve(root, workerEntry)}`,
+      () => collectTransitiveImports(path.resolve(root, workerEntry), root)
+    )))
+  ).flat()
+
+  const preparedCards = await Promise.all(cards.map(card => prepareCard({
+    card,
     config,
+    directories,
     globalSources,
-    nextEntries: nextManifest.entries,
     options,
-    outputDirectory,
     root,
     workerSources
-  })
+  })))
 
-  const outputNames = new Set(cards.map(card => card.output))
+  const preparedAssets = await Promise.all(assets.map(asset => prepareAsset({
+    asset,
+    directories,
+    options,
+    root
+  })))
 
-  const obsolete = Object.keys(previousManifest.entries)
-    .filter(output => !outputNames.has(output))
-    .sort()
+  const prepared: PreparedItem<T>[] = [...preparedCards, ...preparedAssets]
 
-  if (!config.clean) {
-    preserveTrackedOutputs(obsolete, previousManifest.entries, nextManifest.entries)
+  assertUniqueDestinations(prepared)
+
+  for (const item of prepared) {
+    for (const destination of item.destinations) {
+      nextManifest.entries[destination.key] = {
+        baseDirectory: path.relative(root, destination.basePath),
+        fingerprint: item.fingerprint,
+        ...(destination.directory ? { directory: destination.directory } : {}),
+        output: destination.output
+      }
+    }
   }
 
-  const selection = await selectCards(prepared, previousManifest.entries, cache.enabled, options)
+  const outputNames = new Set(Object.keys(nextManifest.entries))
+
+  const obsolete = Object.entries(previousManifest.entries)
+    .filter(([output]) => !outputNames.has(output))
+    .sort(([left], [right]) => left.localeCompare(right))
+
+  if (!config.clean) {
+    for (const [output, entry] of obsolete) nextManifest.entries[output] = entry
+  }
+
+  const selection = await selectItems(prepared, previousManifest.entries, cache.enabled, options)
+
+  for (const item of prepared) {
+    for (const destination of item.destinations) {
+      const previous = previousManifest.entries[destination.key]
+
+      if (previous?.digest && previous.fingerprint === item.fingerprint) {
+        nextManifest.entries[destination.key] = previous
+      }
+    }
+  }
 
   const stale = [
-    ...(config.clean ? obsolete : []),
-    ...selection.stale.map(item => item.card.output)
+    ...(config.clean ? obsolete.map(([output]) => output) : []),
+    ...selection.staleOutputs
   ]
 
   if (options.check) {
@@ -289,19 +549,16 @@ export const generate = async <T>(
       generated: [],
       skipped: selection.skipped,
       stale,
-      total: cards.length
+      total: prepared.reduce((count, item) => count + item.destinations.length, 0)
     }
   }
 
-  const cleaned = config.clean ?
-    await cleanTrackedOutputs(obsolete, outputDirectory, options) :
-    []
-
+  const cleaned = config.clean ? await cleanTrackedOutputs(obsolete, directories, root, options) : []
   const concurrency = Math.min(getConcurrency(config, options), Math.max(selection.stale.length, 1))
   const session = createRenderSession(config, root, concurrency)
 
   try {
-    const generated = await renderCards(selection.stale, concurrency, session, options)
+    const generated = await renderItems(selection.stale, concurrency, session, nextManifest.entries, options)
 
     await mkdir(path.dirname(manifestPath), { recursive: true })
 
@@ -313,7 +570,7 @@ export const generate = async <T>(
       generated,
       skipped: selection.skipped,
       stale: [],
-      total: cards.length
+      total: prepared.reduce((count, item) => count + item.destinations.length, 0)
     }
   } finally {
     await session.close()
