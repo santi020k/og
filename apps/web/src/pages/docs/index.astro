@@ -6,15 +6,18 @@ import SiteFooter from '../../components/SiteFooter.astro'
 import SiteHeader from '../../components/SiteHeader.astro'
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
-const description = 'Use @santi020k/og v0.3 presets, Astro content helpers, custom Sharp or Satori renderers, deterministic caching, and safe output management.'
+const description = 'Use @santi020k/og v0.4 portable page metadata, framework-neutral content helpers, visual presets, custom renderers, deterministic caching, and safe output management.'
 
 const sections = [
   ['quick-start', 'Quick start'],
   ['presets', 'Visual presets'],
-  ['astro-content', 'Astro content'],
+  ['metadata', 'Page metadata'],
+  ['content', 'Markdown content'],
+  ['typed-catalogs', 'Typed catalogs'],
   ['route-cards', 'Route cards'],
   ['custom-renderers', 'Custom renderers'],
   ['outputs', 'Outputs and aliases'],
+  ['typography', 'Typography'],
   ['cache-and-cleanup', 'Cache and cleanup'],
   ['cli', 'CLI reference'],
   ['config-reference', 'Config reference']
@@ -52,29 +55,76 @@ export default definePresetConfig({
   },
 })`
 
-const astroExample = `import { collectAstroContentCards } from '@santi020k/og/astro'
+const contentExample = `import { collectContentCards } from '@santi020k/og/content'
 import { definePresetConfig } from '@santi020k/og/presets'
 
 export default definePresetConfig({
   outputDirectory: 'public/og',
-  cards: () => collectAstroContentCards({
+  cards: () => collectContentCards({
     directory: 'src/content/blog',
     basePath: 'blog',
     map: entry => ({
       title: String(entry.frontmatter.title),
       description: String(entry.frontmatter.description ?? ''),
-      image: String(entry.frontmatter.cover ?? ''),
+      ...(typeof entry.frontmatter.cover === 'string'
+        ? { image: entry.frontmatter.cover }
+        : {}),
       variant: 'article',
     }),
-    sources: entry => [
-      entry.filePath,
-      String(entry.frontmatter.cover ?? ''),
-    ],
+    sources: entry => typeof entry.frontmatter.cover === 'string'
+      ? [entry.filePath, entry.frontmatter.cover]
+      : [entry.filePath],
   }),
   preset: {
     brand: { name: 'Example Journal' },
     variant: 'article',
   },
+})`
+
+const metadataExample = `import { createMetaTags, createPageCard, definePageMetadata } from '@santi020k/og/metadata'
+import { renderMetaTags } from '@santi020k/og/metadata/html'
+import { toNextMetadata } from '@santi020k/og/metadata/next'
+
+export const page = definePageMetadata({
+  pathname: '/docs',
+  title: 'Documentation',
+  description: 'Learn how to generate deterministic social images.',
+  image: {
+    output: 'pages/docs.webp',
+    alt: 'Example documentation social card',
+    width: 1200,
+    height: 630,
+  },
+})
+
+export const card = createPageCard(page, {
+  data: ({ description, title }) => ({
+    title,
+    description,
+    badge: 'Guide',
+    variant: 'docs',
+  }),
+})
+
+const site = { siteUrl: 'https://example.com', siteName: 'Example' }
+export const tags = createMetaTags(page, site)
+export const html = renderMetaTags(tags)
+export const metadata = toNextMetadata(page, site)`
+
+const catalogExample = `import { createCards } from '@santi020k/og'
+
+const cards = createCards(products, product => ({
+  title: product.name,
+  description: product.summary,
+  image: product.image,
+  variant: 'product',
+}), {
+  output: product => 'products/' + product.slug + '.webp',
+  formats: ['png', 'svg'],
+  formatAliases: product => ({
+    png: ['social/' + product.slug + '.png'],
+  }),
+  sources: product => product.image ? [product.image] : [],
 })`
 
 const customExample = `import { defineConfig } from '@santi020k/og'
@@ -91,7 +141,7 @@ export default defineConfig({
 
 const startingPointItems = [
   { code: presetExample, label: 'Preset', language: 'javascript', value: 'preset' },
-  { code: astroExample, label: 'Astro content', language: 'javascript', value: 'astro' },
+  { code: contentExample, label: 'Markdown content', language: 'javascript', value: 'content' },
   { code: customExample, label: 'Custom renderer', language: 'javascript', value: 'custom' }
 ]
 
@@ -132,11 +182,13 @@ const outputExample = `export default defineConfig({
     store: 'apps/store/public',
   },
   cards: [{
-    output: 'home.png',
+    output: 'home.webp',
+    formats: ['png', 'svg'],
     aliases: [
-      'og.png',
-      { directory: 'docs', output: 'social/home.png' },
+      'og.webp',
+      { directory: 'docs', output: 'social/home.webp' },
     ],
+    formatAliases: { png: ['share.png'] },
     data: home,
   }],
   assets: [{
@@ -147,10 +199,46 @@ const outputExample = `export default defineConfig({
   renderer,
 })`
 
+const typographyExample = `export default definePresetConfig({
+  cards,
+  preset: {
+    brand: { name: 'Example' },
+    typography: {
+      file: 'public/fonts/Brand.woff2',
+      family: 'Brand',
+    },
+  },
+})`
+
+const cacheExample = `export default defineConfig({
+  cards,
+  renderer,
+  cache: {
+    key: 'editorial-renderer-v2',
+    sources: ['public/fonts/*.woff2', 'public/logo.svg'],
+  },
+})`
+
+const jsonResultExample = `{
+  "command": "generate",
+  "config": "/project/og.config.mjs",
+  "cacheKey": "preset-v1",
+  "checked": false,
+  "generated": ["home.webp"],
+  "skipped": ["docs.webp"],
+  "cleaned": [],
+  "stale": [],
+  "total": 2,
+  "version": "0.4.0",
+  "elapsedMilliseconds": 184
+}`
+
 const cliExample = `pnpm exec santi-og init
 pnpm exec santi-og generate
 pnpm exec santi-og check
-pnpm exec santi-og compare`
+pnpm exec santi-og compare --threshold 0.01
+pnpm exec santi-og migrate --report --json
+pnpm exec santi-og upgrade --to 0.4.0`
 ---
 
 <BaseLayout title="Documentation" description={description}>
@@ -167,7 +255,7 @@ pnpm exec santi-og compare`
         <p>{description} Start with a useful visual default and customize only what your project needs.</p>
       </div>
       <div class="docs-meta">
-        <span><b>v0.3.0</b> Current docs</span>
+        <span><b>v0.4.0</b> Current docs</span>
         <span><b>Node.js 22.18+</b> Runtime</span>
         <span><b>4 presets</b> Included</span>
       </div>
@@ -184,10 +272,10 @@ pnpm exec santi-og compare`
 
       <article class="docs-content">
         <section class="docs-intro">
-          <p class="docs-lead">Use a complete preset for conventional social cards, connect Astro Markdown or MDX directly, or keep full visual control with a custom renderer.</p>
+          <p class="docs-lead">Use a complete preset for conventional social cards, share page data with portable metadata, connect Markdown or MDX directly, or keep full visual control with a custom renderer.</p>
           <div class="choice-grid">
             <article><span>Fastest</span><h3>Preset config</h3><p>Brand, theme, route data, and optional images. No renderer file.</p></article>
-            <article><span>Content sites</span><h3>Astro helper</h3><p>Frontmatter discovery, nested slugs, draft filtering, and source tracking.</p></article>
+            <article><span>Every framework</span><h3>Shared metadata</h3><p>One page definition for the image, canonical URL, Open Graph, X, HTML, and Next.js.</p></article>
             <article><span>Full control</span><h3>Custom renderer</h3><p>Sharp, Satori, workers, or an existing encoded image function.</p></article>
           </div>
         </section>
@@ -218,30 +306,131 @@ pnpm exec santi-og compare`
         <section id="presets">
           <span class="docs-section-number">02</span>
           <h2>Visual presets</h2>
-          <p>Every preset shares the same accessible title, description, badge, brand, logo, domain, accent, and image data contract. A config-level variant is the default; any card can override it.</p>
+          <p>Every preset shares the same accessible title, description, badge, brand, logo, domain, accent, and image data contract. Bundled Inter typography and glyph-aware wrapping make output portable across build machines. A config-level variant is the default; any card can override it.</p>
           <PresetGallery />
           <div class="docs-note"><strong>Actual package output.</strong><p>These four images are rendered by this site’s <code>og.config.mjs</code> during every build.</p></div>
           <h3>Theme and card overrides</h3>
           <p>Set <code>preset.brand</code>, <code>preset.theme</code>, and <code>preset.variant</code> once. Override <code>accent</code>, <code>brand</code>, <code>domain</code>, <code>image</code>, or <code>variant</code> on individual cards.</p>
+          <p>Generated preset SVG uses portable fill and stroke opacity attributes instead of CSS <code>rgba()</code> colors, improving compatibility with SVG validators and consumer tooling.</p>
         </section>
 
-        <section id="astro-content">
+        <section id="metadata">
           <span class="docs-section-number">03</span>
-          <h2>Astro Markdown and MDX</h2>
-          <p><code>collectAstroContentCards</code> reads YAML frontmatter without starting Astro. It understands nested <code>index.md</code> routes, excludes drafts by default, and tracks each content file as a source.</p>
-          <pre><code>{astroExample}</code></pre>
-          <p>Use <code>map</code> for custom schemas, <code>output</code> for a project-specific filename convention, and <code>sources</code> for covers or other local assets.</p>
+          <h2>Page metadata from the same source</h2>
+          <p><code>definePageMetadata</code> keeps the title, description, route, and social image together. Derive a card with an explicit renderer mapping, portable tag descriptors, escaped HTML, or a Next.js Metadata API object without adding a framework runtime.</p>
+          <pre><code>{metadataExample}</code></pre>
+          <p>The helpers resolve absolute canonical and image URLs, infer image MIME types, include dimensions and alternative text, remove canonical fragments, and validate empty text or invalid dimensions. Article pages can add dates, authors, section, and tags.</p>
+          <h3>Metadata functions</h3>
+          <div class="docs-table-wrap">
+            <table>
+              <thead><tr><th>Function</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td><code>definePageMetadata</code></td><td>Validate a portable page definition while preserving TypeScript inference.</td></tr>
+                <tr><td><code>resolvePageMetadata</code></td><td>Resolve defaults, title templates, canonical and image URLs, MIME types, and robots settings.</td></tr>
+                <tr><td><code>createPageCard</code></td><td>Derive an <code>OgCard</code>; use <code>data</code> to map SEO fields into renderer-specific data explicitly.</td></tr>
+                <tr><td><code>createMetaTags</code></td><td>Create renderer-neutral title, link, Open Graph, article, robots, and X tag descriptors.</td></tr>
+                <tr><td><code>renderMetaTags</code></td><td>Escape and render descriptors as HTML for static templates, Astro, Eleventy, or server output.</td></tr>
+                <tr><td><code>toNextMetadata</code></td><td>Create the dependency-free structural object accepted by the Next.js App Router Metadata API.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>Page definition</h3>
+          <div class="docs-table-wrap">
+            <table>
+              <thead><tr><th>Property</th><th>Required</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td><code>pathname</code></td><td>Yes</td><td>Page route used for its canonical URL and default image output.</td></tr>
+                <tr><td><code>title</code></td><td>Yes</td><td>Page, Open Graph, X, and default card title.</td></tr>
+                <tr><td><code>description</code></td><td>Yes</td><td>Page, Open Graph, X, and default card description.</td></tr>
+                <tr><td><code>canonical</code></td><td>No</td><td>Canonical override as a relative or absolute HTTP(S) URL; fragments are removed.</td></tr>
+                <tr><td><code>image</code></td><td>No</td><td><code>alt</code>, public <code>url</code>, generated <code>output</code>, <code>width</code> (1200), <code>height</code> (630), and inferred or explicit MIME <code>type</code>.</td></tr>
+                <tr><td><code>type</code></td><td>No</td><td><code>website</code>, <code>article</code>, or <code>profile</code>; article data selects <code>article</code> automatically.</td></tr>
+                <tr><td><code>article</code></td><td>No</td><td>Publication and modification dates, authors, section, and tags.</td></tr>
+                <tr><td><code>authors</code> / <code>keywords</code></td><td>No</td><td>Standard author and keyword metadata; article authors are the fallback.</td></tr>
+                <tr><td><code>locale</code> / <code>alternateLocales</code></td><td>No</td><td>Primary and alternate Open Graph locales.</td></tr>
+                <tr><td><code>robots</code></td><td>No</td><td>Defaults to index/follow, large image previews, and unlimited snippet and video previews.</td></tr>
+                <tr><td><code>twitter</code></td><td>No</td><td>X card, site, and creator overrides; defaults to large-image with an image and summary without one.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>Site defaults</h3>
+          <div class="docs-table-wrap">
+            <table>
+              <thead><tr><th>Property</th><th>Default</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td><code>siteUrl</code></td><td>Required</td><td>Absolute HTTP(S) base used for canonical and social image URLs.</td></tr>
+                <tr><td><code>siteName</code></td><td>Omitted</td><td>Open Graph site name.</td></tr>
+                <tr><td><code>publicImagePath</code></td><td><code>/og</code></td><td>Public directory joined with generated image outputs.</td></tr>
+                <tr><td><code>defaultImage</code></td><td>Omitted</td><td>Fallback image contract for pages without their own image.</td></tr>
+                <tr><td><code>locale</code></td><td><code>en_US</code></td><td>Fallback Open Graph locale.</td></tr>
+                <tr><td><code>titleTemplate</code></td><td>Omitted</td><td>Title composition containing <code>%s</code>, such as <code>%s — Example</code>.</td></tr>
+                <tr><td><code>twitter</code></td><td>Omitted</td><td>Default X card, site, and creator settings; page settings override them.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="content">
+          <span class="docs-section-number">04</span>
+          <h2>Framework-neutral Markdown and MDX</h2>
+          <p><code>collectContentCards</code> reads YAML frontmatter without starting Astro, Next.js, or another framework. It understands nested <code>index.md</code> routes, excludes drafts by default, and tracks each content file as a source.</p>
+          <pre><code>{contentExample}</code></pre>
+          <p>Use <code>readContent</code> when you only need the normalized entries. Each entry exposes its body, absolute file path, parsed frontmatter, directory-relative ID, and nested-index-aware slug.</p>
+          <p>Existing <code>@santi020k/og/astro</code> imports remain compatibility aliases for the same implementation.</p>
+          <div class="docs-table-wrap">
+            <table>
+              <thead><tr><th>Option</th><th>Default</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td><code>directory</code></td><td>Required</td><td>Markdown/MDX content directory, relative to <code>root</code>.</td></tr>
+                <tr><td><code>root</code></td><td>Working directory</td><td>Base for the content directory and relative paths.</td></tr>
+                <tr><td><code>include</code></td><td><code>**/*.md</code>, <code>**/*.mdx</code></td><td>Glob patterns evaluated before parsing.</td></tr>
+                <tr><td><code>exclude</code></td><td><code>[]</code></td><td>Glob patterns removed before parsing.</td></tr>
+                <tr><td><code>filter</code></td><td>Include all</td><td>Async-capable predicate evaluated on parsed entries.</td></tr>
+                <tr><td><code>draft</code></td><td><code>frontmatter.draft</code></td><td>Custom async-capable draft predicate.</td></tr>
+                <tr><td><code>includeDrafts</code></td><td><code>false</code></td><td>Include entries identified as drafts.</td></tr>
+                <tr><td><code>map</code></td><td>Preset frontmatter mapping</td><td>Map an entry to typed card data or return <code>null</code> to omit it.</td></tr>
+                <tr><td><code>coverFields</code></td><td>image, cover, heroImage</td><td>Preferred frontmatter image fields for the default mapper.</td></tr>
+                <tr><td><code>basePath</code></td><td>Empty</td><td>Route prefix used by deterministic output mapping.</td></tr>
+                <tr><td><code>extension</code></td><td><code>webp</code></td><td>Default generated image extension.</td></tr>
+                <tr><td><code>output</code></td><td>Pathname output</td><td>Override the output filename for each mapped entry.</td></tr>
+                <tr><td><code>sources</code></td><td>Content file</td><td>Add covers or other files that invalidate the card cache.</td></tr>
+                <tr><td><code>aggregate</code></td><td>Omitted</td><td>Append pagination, tag, locale, or collection cards after entry mapping.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="typed-catalogs">
+          <span class="docs-section-number">05</span>
+          <h2>Typed catalogs and derived collections</h2>
+          <p><code>createCards</code> maps arrays, JSON, CMS results, products, tag archives, or pagination into typed cards without consumer-side expansion. Shared output rules, sources, dimensions, formats, and aliases stay in one place.</p>
+          <pre><code>{catalogExample}</code></pre>
+          <p>The mapper receives the item and index. Every option callback receives the original item, mapped card data, and index, so output names and cache sources can use either representation. <code>formats</code> applies to every logical card; <code>formatAliases</code> can derive encoding-specific destinations per item.</p>
+          <div class="docs-table-wrap">
+            <table>
+              <thead><tr><th>Option</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td><code>output</code></td><td>Required callback deriving each primary output path.</td></tr>
+                <tr><td><code>aliases</code></td><td>Derive same-format string or named-directory aliases per item.</td></tr>
+                <tr><td><code>formats</code></td><td>Publish the same logical card as additional SVG, PNG, WebP, JPEG, or AVIF encodings.</td></tr>
+                <tr><td><code>formatAliases</code></td><td>Derive aliases for individual additional encodings.</td></tr>
+                <tr><td><code>sources</code></td><td>Derive files or source callbacks that invalidate each mapped card.</td></tr>
+                <tr><td><code>width</code> / <code>height</code></td><td>Apply shared dimensions to every card in the catalog.</td></tr>
+                <tr><td><code>outputDirectory</code></td><td>Target a configured named output directory for the complete catalog.</td></tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <section id="route-cards">
-          <span class="docs-section-number">04</span>
+          <span class="docs-section-number">06</span>
           <h2>Route-oriented cards</h2>
           <p><code>pathnameOutput</code> and <code>createPathCards</code> remove repeated slug and output mapping from route-heavy sites. URL segments are encoded into portable, deterministic filenames.</p>
           <pre><code>{pathExample}</code></pre>
         </section>
 
         <section id="custom-renderers">
-          <span class="docs-section-number">05</span>
+          <span class="docs-section-number">07</span>
           <h2>Custom renderers</h2>
           <p>Use a custom renderer for bespoke editorial art, data visualization, or strict legacy parity. The generation pipeline stays the same.</p>
           <CodeTabs
@@ -251,30 +440,42 @@ pnpm exec santi-og compare`
             wrap={false}
           />
           <p>Existing functions that already return PNG, WebP, JPEG, or AVIF bytes can use <code>createEncodedRenderer</code>. Large collections can use <code>defineWorkerRenderer</code> or <code>createSatoriWorkerRenderer</code> with bounded automatic concurrency.</p>
+          <div class="docs-note"><strong>Hybrid projects are supported.</strong><p>Use a preset config for social cards while independent video, diagram, or specialized media scripts retain their custom renderer and own only their outputs.</p></div>
         </section>
 
         <section id="outputs">
-          <span class="docs-section-number">06</span>
+          <span class="docs-section-number">08</span>
           <h2>Outputs, aliases, and assets</h2>
-          <p>Render once and write the same bytes to same-format aliases. Named directories support multi-app repositories, while tracked assets copy icons and supporting files safely.</p>
+          <p>Define one logical card and publish WebP, PNG, JPEG, AVIF, or SVG variants. Same-format aliases reuse bytes, format aliases add encoding-specific names, and named directories support multi-app repositories.</p>
           <pre><code>{outputExample}</code></pre>
-          <div class="docs-note"><strong>One card per format.</strong><p>An SVG and PNG need separate cards because the extension selects encoding. Same-format aliases do not render twice.</p></div>
+          <div class="docs-note"><strong>One card, several formats.</strong><p>Each requested encoding renders once; every alias for that encoding reuses its bytes.</p></div>
+        </section>
+
+        <section id="typography">
+          <span class="docs-section-number">09</span>
+          <h2>Deterministic preset typography</h2>
+          <p>Presets bundle Inter Variable, embed it into generated SVG, measure real glyph advances, split long tokens at grapheme boundaries, and truncate safely. Text layout therefore stays portable across build machines, mixed-width scripts, code-heavy titles, and emoji.</p>
+          <pre><code>{typographyExample}</code></pre>
+          <p>Set <code>preset.typography.file</code> to a local WOFF, WOFF2, TTF, or OTF font and give it a matching <code>family</code>. The file is automatically included in the preset cache fingerprint. Keep the bundled font by omitting <code>typography</code>.</p>
         </section>
 
         <section id="cache-and-cleanup">
-          <span class="docs-section-number">07</span>
+          <span class="docs-section-number">10</span>
           <h2>Cache and cleanup guarantees</h2>
-          <p>Fingerprints include card data, dimensions, destinations, config contents, and declared source contents. Static local renderer imports and literal asset reads are discovered transitively.</p>
+          <p>Fingerprints include card data, dimensions, destinations, config contents, declared sources, the generator version, and an optional semantic cache key. Presets also record their preset version.</p>
           <div class="guarantee-grid">
             <div><span>Fingerprint</span><strong>Content-aware</strong><p>Only cards affected by an input change are rebuilt.</p></div>
             <div><span>Integrity</span><strong>Output digest</strong><p>Checks detect missing, edited, or corrupted generated bytes.</p></div>
             <div><span>Cleanup</span><strong>Tracked only</strong><p>Only obsolete outputs recorded by the previous manifest are removed.</p></div>
           </div>
-          <p>Output and manifest paths remain constrained to the project root. Use <code>santi-og check</code> in CI and <code>santi-og compare</code> for non-destructive migration reports.</p>
+          <h3>Semantic cache revisions</h3>
+          <p>Set <code>cache.key</code> when renderer behavior changes without a directly tracked source change. The key participates in every fingerprint and appears in human-readable and JSON summaries. Preset configs supply their own <code>preset-v1</code> key automatically.</p>
+          <pre><code>{cacheExample}</code></pre>
+          <p>Output and manifest paths remain constrained to the project root. Commit the manifest with committed images; ignore both when images are CI-only artifacts. Use <code>santi-og check</code> for verification and <code>santi-og compare</code> for non-destructive visual reports.</p>
         </section>
 
         <section id="cli">
-          <span class="docs-section-number">08</span>
+          <span class="docs-section-number">11</span>
           <h2>CLI reference</h2>
           <div class="docs-table-wrap">
             <table>
@@ -284,6 +485,10 @@ pnpm exec santi-og compare`
                 <tr><td><code>generate</code></td><td>Render changed cards and clean tracked obsolete output when enabled.</td></tr>
                 <tr><td><code>check</code></td><td>Report missing, changed, or stale cards without mutation.</td></tr>
                 <tr><td><code>compare</code></td><td>Report dimensions, format, size, and pixel differences without replacing files.</td></tr>
+                <tr><td><code>migrate --report</code></td><td>Inventory cards, outputs, local renderer modules, and remaining custom responsibilities.</td></tr>
+                <tr><td><code>upgrade --to</code></td><td>Update package dependencies, pnpm catalogs, and release-age exclusions.</td></tr>
+                <tr><td><code>--json</code></td><td>Print machine-readable generation, check, comparison, migration, or upgrade results.</td></tr>
+                <tr><td><code>--threshold</code></td><td>Fail when the changed-pixel ratio exceeds the accepted value, or whenever an output is missing or changes dimensions.</td></tr>
                 <tr><td><code>--config, -c</code></td><td>Use a specific config file or package directory.</td></tr>
                 <tr><td><code>--concurrency</code></td><td>Set active renders to a positive number or <code>auto</code>.</td></tr>
                 <tr><td><code>--force, -f</code></td><td>Regenerate every card regardless of its fingerprint.</td></tr>
@@ -291,23 +496,37 @@ pnpm exec santi-og compare`
               </tbody>
             </table>
           </div>
+          <h3>Machine-readable results</h3>
+          <p>Add <code>--json</code> for CI, migration tooling, or adoption reports. Generation and checks expose the exact changed sets, total logical cards, library version, semantic cache key, and elapsed time.</p>
+          <pre><code>{jsonResultExample}</code></pre>
+          <div class="docs-table-wrap">
+            <table>
+              <thead><tr><th>Command</th><th>JSON fields</th></tr></thead>
+              <tbody>
+                <tr><td><code>generate</code> / <code>check</code></td><td><code>command</code>, <code>config</code>, <code>cacheKey</code>, <code>checked</code>, <code>generated</code>, <code>skipped</code>, <code>cleaned</code>, <code>stale</code>, <code>total</code>, <code>version</code>, <code>elapsedMilliseconds</code>.</td></tr>
+                <tr><td><code>compare</code></td><td><code>command</code>, <code>version</code>, and <code>comparisons</code> with output, status, actual/expected image details, and changed-pixel counts and ratio.</td></tr>
+                <tr><td><code>migrate --report</code></td><td>Config path and lines, generator version, cache key, custom-renderer status, local modules, logical and physical counts, and recommendations.</td></tr>
+                <tr><td><code>upgrade</code></td><td>Target version, detected package manager, and each changed file with its previous and next values.</td></tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <section id="config-reference">
-          <span class="docs-section-number">09</span>
+          <span class="docs-section-number">12</span>
           <h2>Config reference</h2>
           <div class="docs-table-wrap">
             <table>
               <thead><tr><th>Property</th><th>Default</th><th>Description</th></tr></thead>
               <tbody>
                 <tr><td><code>cards</code></td><td>Required</td><td>Cards or an asynchronous card collector.</td></tr>
-                <tr><td><code>preset</code></td><td>Neutral</td><td>Brand, theme, variant, and Sharp options for <code>definePresetConfig</code>.</td></tr>
+                <tr><td><code>preset</code></td><td>Neutral</td><td>Brand, theme, typography, variant, and Sharp options for <code>definePresetConfig</code>.</td></tr>
                 <tr><td><code>renderer</code></td><td>Custom configs only</td><td>A function or worker descriptor used by <code>defineConfig</code>.</td></tr>
                 <tr><td><code>assets</code></td><td><code>[]</code></td><td>Static files copied and tracked alongside cards.</td></tr>
                 <tr><td><code>outputDirectory</code></td><td><code>public/og</code></td><td>Primary output directory relative to the project root.</td></tr>
                 <tr><td><code>outputDirectories</code></td><td><code>{`{}`}</code></td><td>Additional named output directories.</td></tr>
                 <tr><td><code>width</code> / <code>height</code></td><td><code>1200 × 630</code></td><td>Default dimensions; individual cards may override them.</td></tr>
-                <tr><td><code>cache</code></td><td>Enabled</td><td>Boolean or cache options with manifest and shared sources.</td></tr>
+                <tr><td><code>cache</code></td><td>Enabled</td><td>Boolean or cache options with semantic key, manifest path, and shared sources.</td></tr>
                 <tr><td><code>clean</code></td><td><code>false</code></td><td>Remove only obsolete outputs previously tracked by the tool.</td></tr>
                 <tr><td><code>concurrency</code></td><td>Renderer-based</td><td>Fixed, automatic, or bounded automatic active renders.</td></tr>
                 <tr><td><code>root</code></td><td>Config directory</td><td>Project root used to resolve and constrain paths.</td></tr>
@@ -318,7 +537,7 @@ pnpm exec santi-og compare`
 
         <section class="docs-next">
           <span class="kicker">Migration guide</span>
-          <h2>Replace repeated renderers with v0.3 presets.</h2>
+          <h2>Replace repeated renderers with portable v0.4 workflows.</h2>
           <p>The ten-project migration removed 2,273 lines of consumer Open Graph code while preserving route data and project-owned branding.</p>
           <a class="button" href="https://github.com/santi020k/og/blob/main/packages/og/docs/migrating-existing-projects.md">Read the migration guide <span>↗</span></a>
         </section>

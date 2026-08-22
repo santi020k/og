@@ -3,6 +3,7 @@ import path from 'node:path'
 import type {
   Awaitable,
   OgCard,
+  OgFormat,
   OgOutputTarget,
   OgRenderContext,
   OgRenderer,
@@ -31,6 +32,41 @@ export interface PathCardOptions {
   directory?: string
   extension?: string
 }
+
+export interface CreateCardsOptions<T, TData> {
+  aliases?: (item: T, data: TData, index: number) => OgCard<TData>['aliases']
+  formats?: readonly OgFormat[]
+  formatAliases?: (item: T, data: TData, index: number) => OgCard<TData>['formatAliases']
+  height?: number
+  output: (item: T, data: TData, index: number) => string
+  outputDirectory?: string
+  sources?: (item: T, data: TData, index: number) => OgCard<TData>['sources']
+  width?: number
+}
+
+/** Map any typed catalog into cards while keeping derived output and source rules in one place. */
+export const createCards = <T, TData>(
+  items: readonly T[],
+  mapper: (item: T, index: number) => TData,
+  options: CreateCardsOptions<T, TData>
+): OgCard<TData>[] => items.map((item, index) => {
+  const data = mapper(item, index)
+  const aliases = options.aliases?.(item, data, index)
+  const formatAliases = options.formatAliases?.(item, data, index)
+  const sources = options.sources?.(item, data, index)
+
+  return {
+    data,
+    output: options.output(item, data, index),
+    ...(aliases ? { aliases } : {}),
+    ...(options.formats ? { formats: options.formats } : {}),
+    ...(formatAliases ? { formatAliases } : {}),
+    ...(options.height === undefined ? {} : { height: options.height }),
+    ...(options.outputDirectory ? { outputDirectory: options.outputDirectory } : {}),
+    ...(sources ? { sources } : {}),
+    ...(options.width === undefined ? {} : { width: options.width })
+  }
+})
 
 /** Convert the common legacy `{ outFile, props }` shape into cards. */
 export const fromLegacyCards = <T>(specs: readonly LegacyCardSpec<T>[]): OgCard<T>[] => (

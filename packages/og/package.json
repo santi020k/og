@@ -1,6 +1,6 @@
 {
   "name": "@santi020k/og",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Generate deterministic Open Graph images with reusable presets or project-owned renderers.",
   "type": "module",
   "sideEffects": false,
@@ -14,6 +14,22 @@
     "./astro": {
       "types": "./dist/astro.d.ts",
       "default": "./dist/astro.js"
+    },
+    "./content": {
+      "types": "./dist/content.d.ts",
+      "default": "./dist/content.js"
+    },
+    "./metadata": {
+      "types": "./dist/metadata.d.ts",
+      "default": "./dist/metadata.js"
+    },
+    "./metadata/html": {
+      "types": "./dist/metadata-html.d.ts",
+      "default": "./dist/metadata-html.js"
+    },
+    "./metadata/next": {
+      "types": "./dist/metadata-next.d.ts",
+      "default": "./dist/metadata-next.js"
     },
     "./presets": {
       "types": "./dist/presets.d.ts",
@@ -54,7 +70,9 @@
     "prepack": "pnpm run validate"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
     "@resvg/resvg-js": "^2.6.2",
+    "fontkit": "^2.0.4",
     "satori": "^0.33.3",
     "satori-html": "^0.3.2",
     "sharp": "^0.35.3",
@@ -62,6 +80,7 @@
   },
   "devDependencies": {
     "@santi020k/eslint-config-basic": "^3.5.1",
+    "@types/fontkit": "^2.0.9",
     "@types/node": "^22.18.0",
     "@types/react": "^19.1.12",
     "@vitest/coverage-v8": "^4.1.11",

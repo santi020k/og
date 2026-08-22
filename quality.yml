@@ -24,3 +24,15 @@ tasks:
     - validate
     required: true
     parser: generic
+hooks:
+  commit-msg:
+    steps:
+      - name: Validate commit message
+        command: pnpm
+        args: [exec, commitprompt, validate, --input]
+        pass_hook_args: true
+  pre-push:
+    steps:
+      - name: Run repository validation
+        command: pnpm
+        args: [run, validate]

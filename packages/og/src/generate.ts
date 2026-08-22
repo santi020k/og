@@ -21,10 +21,12 @@ import type {
   OgConcurrency,
   OgConfig,
   OgEvent,
+  OgFormat,
   OgOutputTarget,
   OgRenderContext,
   OgRenderOutput
 } from './types.js'
+import { GENERATOR_VERSION } from './version.js'
 import { OgWorkerPool } from './worker-pool.js'
 
 interface Destination {
@@ -77,18 +79,38 @@ const fileExists = async (filePath: string): Promise<boolean> => {
 }
 
 const getCacheOptions = (cache: OgConfig['cache']): Required<OgCacheOptions> => {
-  if (cache === false) return { enabled: false, manifest: '.og-cache.json', sources: [] }
+  if (cache === false) return { enabled: false, key: '', manifest: '.og-cache.json', sources: [] }
 
   if (cache === true || cache === undefined) {
-    return { enabled: true, manifest: '.og-cache.json', sources: [] }
+    return { enabled: true, key: '', manifest: '.og-cache.json', sources: [] }
   }
 
   return {
     enabled: cache.enabled ?? true,
+    key: cache.key ?? '',
     manifest: cache.manifest ?? '.og-cache.json',
     sources: cache.sources ?? []
   }
 }
+
+const formatExtension = (format: OgFormat): string => format === 'jpeg' ? 'jpeg' : format
+
+const replaceFormat = (output: string, format: OgFormat): string => {
+  const extension = path.posix.extname(output)
+
+  return `${extension ? output.slice(0, -extension.length) : output}.${formatExtension(format)}`
+}
+
+const cardFormats = <T>(card: OgCard<T>): OgFormat[] => {
+  const primary = getFormat(card.output)
+
+  return [...new Set([primary, ...(card.formats ?? [])])]
+}
+
+const cardAliases = <T>(card: OgCard<T>, format: OgFormat, primary: OgFormat): readonly (OgOutputTarget | string)[] => [
+  ...(format === primary ? card.aliases ?? [] : []),
+  ...(card.formatAliases?.[format] ?? [])
+]
 
 const autoConcurrency = (configured: Extract<OgConcurrency, 'auto' | object>): number => {
   const detected = Math.max(1, availableParallelism())
@@ -220,18 +242,20 @@ const withSourceContext = async <T>(label: string, operation: () => Promise<T>):
 }
 
 const prepareCard = async <T>(parameters: {
+  aliases: readonly (OgOutputTarget | string)[]
   card: OgCard<T>
   config: OgConfig<T>
   directories: ReadonlyMap<string | undefined, string>
   globalSources: readonly string[]
   options: GenerateOptions
+  output: string
   root: string
   workerSources: readonly string[]
 }): Promise<PreparedCard<T>> => {
   const { card } = parameters
-  const primary = outputTarget(card.output, card.outputDirectory)
-  const destinations = resolveDestinations(primary, card.aliases, parameters.directories)
-  const format = getFormat(card.output)
+  const primary = outputTarget(parameters.output, card.outputDirectory)
+  const destinations = resolveDestinations(primary, parameters.aliases, parameters.directories)
+  const format = getFormat(parameters.output)
 
   for (const alias of destinations.slice(1)) {
     const aliasFormat = getFormat(alias.output)
@@ -259,9 +283,12 @@ const prepareCard = async <T>(parameters: {
     `Unable to fingerprint OG card ${destinationKey(primary)}`,
     () => hashValues([
       'santi020k-og-cache-v2',
+      GENERATOR_VERSION,
+      typeof parameters.config.cache === 'object' ? parameters.config.cache.key ?? '' : '',
       parameters.options.configFingerprint ?? '',
       destinations.map(destination => destination.key),
       card.data,
+      context.format,
       context.height,
       context.width
     ], sources)
@@ -457,6 +484,7 @@ export const generate = async <T>(
   config: OgConfig<T>,
   options: GenerateOptions = {}
 ): Promise<GenerateResult> => {
+  const startedAt = performance.now()
   const root = path.resolve(config.root ?? process.cwd())
   const directories = resolveDirectories(config, root, options.stagingDirectory)
   const cache = getCacheOptions(config.cache)
@@ -468,7 +496,7 @@ export const generate = async <T>(
   const cards = typeof config.cards === 'function' ? await config.cards() : config.cards
   const assets = typeof config.assets === 'function' ? await config.assets() : (config.assets ?? [])
   const previousManifest = await readManifest(manifestPath)
-  const nextManifest = emptyManifest()
+  const nextManifest = emptyManifest(GENERATOR_VERSION, cache.key || undefined)
   const globalSources = await expandSources(cache.sources, root, 'cache')
   const workerDescriptor = isWorkerRenderer(config.renderer) ? config.renderer : undefined
 
@@ -483,15 +511,21 @@ export const generate = async <T>(
     )))
   ).flat()
 
-  const preparedCards = await Promise.all(cards.map(card => prepareCard({
-    card,
-    config,
-    directories,
-    globalSources,
-    options,
-    root,
-    workerSources
-  })))
+  const preparedCards = (await Promise.all(cards.map(async card => {
+    const primary = getFormat(card.output)
+
+    return Promise.all(cardFormats(card).map(format => prepareCard({
+      aliases: cardAliases(card, format, primary),
+      card,
+      config,
+      directories,
+      globalSources,
+      options,
+      output: format === primary ? card.output : replaceFormat(card.output, format),
+      root,
+      workerSources
+    })))
+  }))).flat()
 
   const preparedAssets = await Promise.all(assets.map(asset => prepareAsset({
     asset,
@@ -544,12 +578,15 @@ export const generate = async <T>(
 
   if (options.check) {
     return {
+      ...(cache.key ? { cacheKey: cache.key } : {}),
       checked: true,
       cleaned: [],
       generated: [],
       skipped: selection.skipped,
       stale,
-      total: prepared.reduce((count, item) => count + item.destinations.length, 0)
+      elapsedMilliseconds: performance.now() - startedAt,
+      total: prepared.reduce((count, item) => count + item.destinations.length, 0),
+      version: GENERATOR_VERSION
     }
   }
 
@@ -565,12 +602,15 @@ export const generate = async <T>(
     await writeManifest(manifestPath, nextManifest)
 
     return {
+      ...(cache.key ? { cacheKey: cache.key } : {}),
       checked: false,
       cleaned,
       generated,
       skipped: selection.skipped,
       stale: [],
-      total: prepared.reduce((count, item) => count + item.destinations.length, 0)
+      elapsedMilliseconds: performance.now() - startedAt,
+      total: prepared.reduce((count, item) => count + item.destinations.length, 0),
+      version: GENERATOR_VERSION
     }
   } finally {
     await session.close()

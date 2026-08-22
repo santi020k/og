@@ -9,11 +9,18 @@ export interface OgManifestEntry {
 }
 
 export interface OgManifest {
+  cacheKey?: string
   entries: Record<string, OgManifestEntry>
-  version: 2
+  generatorVersion: string
+  version: 3
 }
 
-export const emptyManifest = (): OgManifest => ({ entries: {}, version: 2 })
+export const emptyManifest = (generatorVersion: string, cacheKey?: string): OgManifest => ({
+  ...(cacheKey ? { cacheKey } : {}),
+  entries: {},
+  generatorVersion,
+  version: 3
+})
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
   typeof value === 'object' && value !== null
@@ -25,7 +32,9 @@ export const readManifest = async (manifestPath: string): Promise<OgManifest> =>
     const parsed: unknown = JSON.parse(contents)
 
     if (isRecord(parsed) && isRecord(parsed.entries)) {
-      if (parsed.version === 2) return parsed as unknown as OgManifest
+      if (parsed.version === 3 && typeof parsed.generatorVersion === 'string') {
+        return parsed as unknown as OgManifest
+      }
 
       if (parsed.version === 1) {
         const entries = Object.fromEntries(
@@ -34,14 +43,22 @@ export const readManifest = async (manifestPath: string): Promise<OgManifest> =>
             .map(([output, fingerprint]) => [output, { fingerprint }])
         )
 
-        return { entries, version: 2 }
+        return { entries, generatorVersion: 'legacy', version: 3 }
+      }
+
+      if (parsed.version === 2) {
+        return {
+          entries: parsed.entries as Record<string, OgManifestEntry>,
+          generatorVersion: 'legacy',
+          version: 3
+        }
       }
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
 
-  return emptyManifest()
+  return emptyManifest('unknown')
 }
 
 export const writeManifest = async (manifestPath: string, manifest: OgManifest): Promise<void> => {
