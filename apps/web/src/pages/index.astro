@@ -1,0 +1,185 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+const description = 'Generate deterministic, cache-aware Open Graph images with your own data, design, and renderer. Framework-agnostic TypeScript for Astro, Next.js, and Node.js.'
+
+const features = [
+  {
+    eyebrow: 'Bring the design',
+    title: 'Your brand stays yours',
+    body: 'Feed the generator an SVG, Satori tree, Sharp pipeline, or custom renderer. The core never dictates your visual system.'
+  },
+  {
+    eyebrow: 'Build only what changed',
+    title: 'Content-aware caching',
+    body: 'Card data, dimensions, configuration, templates, fonts, and declared source files all participate in deterministic fingerprints.'
+  },
+  {
+    eyebrow: 'Safe by construction',
+    title: 'Clean without surprises',
+    body: 'Traversal protection keeps output inside your project. Cleanup removes only obsolete files previously tracked by the generator.'
+  }
+]
+
+const steps = [
+  ['01', 'Define cards', 'Return an array or collect content asynchronously from Markdown, a CMS, or your application.'],
+  ['02', 'Render your way', 'Use the Sharp and Satori adapters, or provide any function that returns supported image output.'],
+  ['03', 'Generate with confidence', 'Build in parallel, skip unchanged cards, and verify committed output without mutating CI.']
+]
+---
+
+<BaseLayout title="@santi020k/og" description={description}>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="/" aria-label="@santi020k/og home">
+        <img src="/icon.svg" width="34" height="34" alt="" />
+        <span>@santi020k/og</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#features">Features</a>
+        <a href="https://github.com/santi020k/santi020k-og#readme">Docs</a>
+        <a class="github-link" href="https://github.com/santi020k/santi020k-og">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .7a11.5 11.5 0 0 0-3.64 22.4c.58.11.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.52-1.34-1.28-1.7-1.28-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.57-.29-5.27-1.28-5.27-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.94 10.94 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.71 5.38-5.29 5.67.42.36.79 1.06.79 2.14v3.17c0 .31.21.68.8.56A11.5 11.5 0 0 0 12 .7Z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="content">
+    <section class="hero shell">
+      <div class="hero-copy">
+        <div class="pill"><span></span> Renderer-agnostic by design</div>
+        <h1>Open Graph images,<br /><em>without the lock-in.</em></h1>
+        <p>{description}</p>
+        <div class="hero-actions">
+          <div class="install" aria-label="Install command">
+            <span aria-hidden="true">$</span>
+            <code>pnpm add -D @santi020k/og</code>
+            <button type="button" data-copy="pnpm add -D @santi020k/og" aria-label="Copy install command">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M5 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z"/></svg>
+              <span class="copy-label">Copy</span>
+            </button>
+          </div>
+          <a class="text-link" href="https://github.com/santi020k/santi020k-og#quick-start">Get started <span>↗</span></a>
+        </div>
+        <div class="compatibility" aria-label="Compatible technologies">
+          <span>Works anywhere Node.js runs</span>
+          <ul>
+            <li>Astro</li>
+            <li>Next.js</li>
+            <li>Sharp</li>
+            <li>Satori</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-label="Example Open Graph cards">
+        <div class="orbit orbit-one"></div>
+        <div class="orbit orbit-two"></div>
+        <article class="card card-back" aria-hidden="true">
+          <div class="mini-brand"><img src="/icon.svg" alt="" /> @santi020k/og</div>
+          <strong>Ship the card.<br />Keep the system.</strong>
+        </article>
+        <article class="card card-front">
+          <div class="card-top">
+            <div class="mini-brand"><img src="/icon.svg" alt="" /> @santi020k/og</div>
+            <span>1200 × 630</span>
+          </div>
+          <div class="preview-copy">
+            <span>GUIDE</span>
+            <strong>Beautiful previews.<br />Predictable builds.</strong>
+            <p>Render branded cards from the content you already own.</p>
+          </div>
+          <div class="card-footer"><span>your-project.dev</span><b>→</b></div>
+        </article>
+        <span class="format format-svg">SVG</span>
+        <span class="format format-webp">WebP</span>
+        <span class="format format-png">PNG</span>
+      </div>
+    </section>
+
+    <section class="proof">
+      <div class="shell proof-grid">
+        <div><strong>5</strong><span>output formats</span></div>
+        <div><strong>0</strong><span>framework runtime</span></div>
+        <div><strong>∞</strong><span>design systems</span></div>
+        <p>One small orchestration layer between your content and every social preview.</p>
+      </div>
+    </section>
+
+    <section class="features shell" id="features">
+      <div class="section-heading">
+        <span class="kicker">The useful machinery</span>
+        <h2>Own the creative.<br /><em>Delegate the repetitive.</em></h2>
+        <p>Everything a production image pipeline needs, without moving your content or visual language into a framework.</p>
+      </div>
+      <div class="feature-grid">
+        {features.map((feature, index) => (
+          <article class="feature-card">
+            <span class="feature-number">0{index + 1}</span>
+            <div class:list={['feature-icon', `feature-icon-${index + 1}`]} aria-hidden="true">
+              {index === 0 && <><span></span><span></span><span></span></>}
+              {index === 1 && <><i></i><b></b></>}
+              {index === 2 && <><span></span><i>✓</i></>}
+            </div>
+            <span class="eyebrow">{feature.eyebrow}</span>
+            <h3>{feature.title}</h3>
+            <p>{feature.body}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="workflow">
+      <div class="shell workflow-grid">
+        <div class="section-heading compact">
+          <span class="kicker">A boringly good build step</span>
+          <h2>From content to card<br /><em>in three moves.</em></h2>
+        </div>
+        <ol>
+          {steps.map(([number, title, body]) => (
+            <li>
+              <span>{number}</span>
+              <div><h3>{title}</h3><p>{body}</p></div>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+
+    <section class="cta shell">
+      <img src="/icon.svg" width="54" height="54" alt="" />
+      <span class="kicker">Ready when your content is</span>
+      <h2>Make every link<br /><em>look intentional.</em></h2>
+      <p>Start with the complete SVG example, then make it unmistakably yours.</p>
+      <div class="cta-actions">
+        <a class="button" href="https://www.npmjs.com/package/@santi020k/og">View on npm <span>↗</span></a>
+        <a class="button secondary" href="https://github.com/santi020k/santi020k-og">Browse the source <span>→</span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell footer-inner">
+      <a class="brand" href="/"><img src="/icon.svg" width="30" height="30" alt="" /><span>@santi020k/og</span></a>
+      <p>MIT licensed. Built by <a href="https://santi020k.com">Santiago Molina</a>.</p>
+      <div><a href="https://github.com/santi020k/santi020k-og">GitHub</a><a href="https://www.npmjs.com/package/@santi020k/og">npm</a></div>
+    </div>
+  </footer>
+
+  <script>
+    const button = document.querySelector<HTMLButtonElement>('[data-copy]')
+
+    button?.addEventListener('click', async () => {
+      const command = button.dataset.copy
+      if (!command) return
+      await navigator.clipboard.writeText(command)
+      const label = button.querySelector('.copy-label')
+      if (label) label.textContent = 'Copied'
+      window.setTimeout(() => {
+        if (label) label.textContent = 'Copy'
+      }, 1600)
+    })
+  </script>
+</BaseLayout>

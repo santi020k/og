@@ -1,0 +1,24 @@
+{
+  "name": "@santi020k/og-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm run generate:og && astro check && astro build",
+    "clean": "node scripts/clean.mjs",
+    "dev": "pnpm run generate:og && astro dev",
+    "generate:og": "node ../../packages/og/dist/cli.js generate",
+    "lint": "astro check",
+    "preview": "astro preview",
+    "typecheck": "astro check",
+    "validate": "pnpm run clean && pnpm run build"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.3",
+    "@santi020k/og": "workspace:*",
+    "astro": "^7.2.4"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.6",
+    "typescript": "^5.9.2"
+  }
+}

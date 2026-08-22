@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://quality-cli.santi020k.chatgpt.site/quality.schema.json
+# quality.yml — one code-quality workflow for this repository
+# Tools are auto-detected; entries below make the selected policy explicit.
+# A canonical repository script replaces analyzer checks when one is detected,
+# while the analyzers remain available to `quality format` and `quality fix`.
+version: 1
+output: pretty
+baseline: .quality-baseline.json
+tools:
+  cspell:
+    enabled: true
+    check: false
+    required: true
+  eslint:
+    enabled: true
+    check: false
+    required: true
+tasks:
+  repository-check:
+    name: Repository check (validate)
+    command: pnpm
+    args:
+    - run
+    - validate
+    required: true
+    parser: generic

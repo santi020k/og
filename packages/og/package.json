@@ -1,0 +1,95 @@
+{
+  "name": "@santi020k/og",
+  "version": "0.1.0",
+  "description": "Generate deterministic Open Graph images with project-owned designs and a reusable pipeline.",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./sharp": {
+      "types": "./dist/renderers/sharp.d.ts",
+      "default": "./dist/renderers/sharp.js"
+    },
+    "./satori": {
+      "types": "./dist/renderers/satori.d.ts",
+      "default": "./dist/renderers/satori.js"
+    }
+  },
+  "bin": {
+    "santi-og": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "docs",
+    "examples",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "node scripts/clean.mjs",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "lint": "eslint . --cache --no-warn-ignored --max-warnings=0",
+    "lint:fix": "eslint . --cache --fix --no-warn-ignored --max-warnings=0",
+    "lint:spell": "cspell \"**\" --gitignore --cache --show-suggestions --show-context",
+    "test": "vitest run && node --test tests/*.test.mjs",
+    "test:coverage": "vitest run --coverage && node --test tests/*.test.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check:pack": "publint",
+    "validate": "pnpm run clean && pnpm run build && pnpm run typecheck && pnpm run test:coverage && pnpm run lint && pnpm run lint:spell && pnpm run check:pack",
+    "prepack": "pnpm run validate"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "satori": "^0.33.3",
+    "satori-html": "^0.3.2",
+    "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "@santi020k/eslint-config-basic": "^3.5.1",
+    "@types/node": "^22.18.0",
+    "@types/react": "^19.1.12",
+    "@vitest/coverage-v8": "^4.1.11",
+    "cspell": "^10.0.1",
+    "eslint": "^10.9.0",
+    "publint": "^0.3.12",
+    "typescript": "^5.9.2",
+    "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "packageManager": "pnpm@10.32.1",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/santi020k/santi020k-og.git"
+  },
+  "homepage": "https://og.santi020k.com",
+  "bugs": {
+    "url": "https://github.com/santi020k/santi020k-og/issues"
+  },
+  "keywords": [
+    "open-graph",
+    "og-image",
+    "social-image",
+    "satori",
+    "sharp",
+    "astro",
+    "seo"
+  ],
+  "author": {
+    "name": "Santiago Molina",
+    "url": "https://santi020k.com"
+  },
+  "license": "MIT"
+}

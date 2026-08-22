@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+.astro/
+.turbo/
+.eslintcache
+.cspellcache
+.DS_Store
+*.tgz
+.og-cache.json

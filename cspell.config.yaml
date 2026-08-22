@@ -1,0 +1,27 @@
+version: "0.2"
+language: en,en-GB
+useGitignore: true
+words:
+  - avif
+  - commitprompt
+  - Contrac
+  - esbuild
+  - frontmatter
+  - lock-in
+  - Molina
+  - monorepos
+  - Resvg
+  - santi
+  - Santi
+  - Satori
+  - santi020k
+  - Starlight
+  - structured
+  - WebP
+ignorePaths:
+  - .astro/**
+  - .turbo/**
+  - coverage/**
+  - dist/**
+  - node_modules/**
+  - pnpm-lock.yaml

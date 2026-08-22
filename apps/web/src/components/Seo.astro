@@ -1,0 +1,60 @@
+---
+interface Props {
+  description: string
+  image?: string
+  title: string
+}
+
+const { description, image = '/og/default.webp', title } = Astro.props
+const canonical = new URL(Astro.url.pathname, Astro.site)
+const socialImage = new URL(image, Astro.site)
+const fullTitle = title === '@santi020k/og'
+  ? '@santi020k/og — Open Graph image generation'
+  : `${title} — @santi020k/og`
+
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareSourceCode',
+  codeRepository: 'https://github.com/santi020k/santi020k-og',
+  description,
+  license: 'https://opensource.org/license/mit',
+  name: '@santi020k/og',
+  programmingLanguage: 'TypeScript',
+  runtimePlatform: 'Node.js',
+  url: canonical.href
+}
+---
+
+<title>{fullTitle}</title>
+<meta name="description" content={description} />
+<meta name="author" content="Santiago Molina" />
+<meta name="generator" content={Astro.generator} />
+<meta name="robots" content="index, follow, max-image-preview:large" />
+<meta name="theme-color" content="#07110e" />
+<meta name="color-scheme" content="dark" />
+
+<link rel="canonical" href={canonical} />
+<link rel="sitemap" href="/sitemap-index.xml" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="/icon-192.png" sizes="192x192" type="image/png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/site.webmanifest" />
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="@santi020k/og" />
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical} />
+<meta property="og:image" content={socialImage} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="@santi020k/og package card" />
+<meta property="og:locale" content="en_US" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={fullTitle} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={socialImage} />
+<meta name="twitter:image:alt" content="@santi020k/og package card" />
+
+<script type="application/ld+json" set:html={JSON.stringify(structuredData)} is:inline />
