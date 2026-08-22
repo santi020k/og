@@ -18,6 +18,20 @@ export interface LegacyCardSpec<T> {
   width?: number
 }
 
+export interface PathCardSpec<T> {
+  aliases?: readonly (string | OgOutputTarget)[]
+  data: T
+  height?: number
+  pathname: string
+  sources?: OgCard<T>['sources']
+  width?: number
+}
+
+export interface PathCardOptions {
+  directory?: string
+  extension?: string
+}
+
 /** Convert the common legacy `{ outFile, props }` shape into cards. */
 export const fromLegacyCards = <T>(specs: readonly LegacyCardSpec<T>[]): OgCard<T>[] => (
   specs.map(spec => ({
@@ -29,6 +43,38 @@ export const fromLegacyCards = <T>(specs: readonly LegacyCardSpec<T>[]): OgCard<
     ...(spec.width === undefined ? {} : { width: spec.width })
   }))
 )
+
+/** Convert a URL pathname into a deterministic, filesystem-safe output name. */
+export const pathnameOutput = (
+  pathname: string,
+  options: PathCardOptions = {}
+): string => {
+  const extension = options.extension?.replace(/^\./u, '') ?? 'webp'
+
+  const filename = pathname
+    .replace(/^\/+|\/+$/gu, '')
+    .split('/')
+    .filter(Boolean)
+    .map(segment => encodeURIComponent(segment).replaceAll('%', '~'))
+    .join('--') || 'index'
+
+  const directory = options.directory?.replace(/^\/+|\/+$/gu, '')
+
+  return [directory, `${filename}.${extension}`].filter(Boolean).join('/')
+}
+
+/** Create cards from URL-oriented page definitions without repeating output mapping. */
+export const createPathCards = <T>(
+  specs: readonly PathCardSpec<T>[],
+  options: PathCardOptions = {}
+): OgCard<T>[] => specs.map(spec => ({
+  data: spec.data,
+  output: pathnameOutput(spec.pathname, options),
+  ...(spec.aliases ? { aliases: spec.aliases } : {}),
+  ...(spec.height === undefined ? {} : { height: spec.height }),
+  ...(spec.sources ? { sources: spec.sources } : {}),
+  ...(spec.width === undefined ? {} : { width: spec.width })
+}))
 
 /** Derive a portable card output from a path inside outputDirectory. */
 export const relativeOutput = (outputDirectory: string, outFile: string): string => {

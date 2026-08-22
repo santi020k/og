@@ -1,51 +1,46 @@
-import { defineConfig } from '@santi020k/og'
-import { createSharpRenderer } from '@santi020k/og/sharp'
+import { definePresetConfig } from '@santi020k/og/presets'
 
-const escapeXml = (value) => value
-  .replaceAll('&', '&amp;')
-  .replaceAll('<', '&lt;')
-  .replaceAll('>', '&gt;')
-  .replaceAll('"', '&quot;')
+const examples = [
+  {
+    accent: '#65f6bd',
+    badge: 'Open Graph',
+    description: 'A useful default card with no consumer-owned renderer.',
+    title: 'Start simple. Stay flexible.',
+    variant: 'simple'
+  },
+  {
+    accent: '#ff8a65',
+    badge: 'Release notes',
+    description: 'Turn Markdown and MDX frontmatter into polished social previews.',
+    title: 'Open Graph images that follow your content.',
+    variant: 'article'
+  },
+  {
+    accent: '#65b8f6',
+    badge: 'Documentation',
+    description: 'Generate route-aware cards for guides, references, and component pages.',
+    title: 'One config for every documentation route.',
+    variant: 'docs'
+  },
+  {
+    accent: '#b58cff',
+    badge: 'Product',
+    description: 'Brand, theme, and copy stay configurable in the consumer project.',
+    title: 'Ship the card. Delete the renderer.',
+    variant: 'product'
+  }
+]
 
-export default defineConfig({
-  cache: { sources: ['public/icon.svg'] },
-  cards: [{
-    data: {
-      description: 'Deterministic social images. Your data, design, and renderer.',
-      title: 'Open Graph images, without the framework lock-in.'
-    },
-    output: 'default.webp'
-  }],
+export default definePresetConfig({
+  cards: examples.map(example => ({
+    aliases: example.variant === 'product' ? ['default.webp'] : undefined,
+    data: example,
+    output: `presets/${example.variant}.webp`
+  })),
   clean: true,
   outputDirectory: 'public/og',
-  renderer: createSharpRenderer({
-    renderSvg: ({ description, title }, { height, width }) => `
-      <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-        <defs>
-          <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-            <stop stop-color="#07110e"/>
-            <stop offset="1" stop-color="#10231d"/>
-          </linearGradient>
-          <radialGradient id="glow" cx="78%" cy="0%" r="75%">
-            <stop stop-color="#65f6bd" stop-opacity=".26"/>
-            <stop offset="1" stop-color="#65f6bd" stop-opacity="0"/>
-          </radialGradient>
-        </defs>
-        <rect width="${width}" height="${height}" rx="42" fill="url(#bg)"/>
-        <rect width="${width}" height="${height}" rx="42" fill="url(#glow)"/>
-        <g transform="translate(72 68)">
-          <rect width="72" height="72" rx="20" fill="#65f6bd"/>
-          <path d="M21 24h30v11H32v17H21V24Zm30 24H37V37h14v11Z" fill="#07110e"/>
-        </g>
-        <text x="164" y="116" fill="#eafff6" font-size="31" font-family="Arial, sans-serif" font-weight="700">@santi020k/og</text>
-        <text x="72" y="270" fill="#f4fff9" font-size="62" font-family="Arial, sans-serif" font-weight="700">
-          <tspan x="72" dy="0">${escapeXml(title.slice(0, 31))}</tspan>
-          <tspan x="72" dy="76">${escapeXml(title.slice(31))}</tspan>
-        </text>
-        <text x="72" y="500" fill="#a9c6ba" font-size="28" font-family="Arial, sans-serif">${escapeXml(description)}</text>
-        <path d="M72 554h1056" stroke="#29483c"/>
-        <text x="72" y="590" fill="#65f6bd" font-size="22" font-family="monospace">npm i -D @santi020k/og</text>
-      </svg>`,
-    webp: { quality: 88 }
-  })
+  preset: {
+    brand: { domain: 'og.santi020k.com', name: '@santi020k/og' },
+    theme: { background: '#07110e', foreground: '#eafff6', muted: '#9ab2a8', panel: '#11231d' }
+  }
 })

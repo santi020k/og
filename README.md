@@ -1,7 +1,7 @@
 # @santi020k/og
 
-Deterministic Open Graph image generation that keeps your brand, content model, and renderer in
-your project.
+Deterministic Open Graph image generation with useful visual presets and a fully custom renderer
+escape hatch.
 
 [Website](https://og.santi020k.com) ·
 [npm](https://www.npmjs.com/package/@santi020k/og) ·
@@ -16,8 +16,10 @@ your project.
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Use `@santi020k/og` with Astro, Next.js, plain Node.js, monorepos, Markdown collections, CMS data,
-or a static array. You supply the cards and renderer; the package handles output paths,
-content-aware caching, bounded concurrency, safe cleanup, encoding, and CI verification.
+or a static array. Start with the `simple`, `article`, `docs`, or `product` preset and add your
+content and brand. The package handles rendering, output paths, content-aware caching, bounded
+concurrency, safe cleanup, encoding, and CI verification. A custom Sharp or Satori renderer remains
+available when a project needs a unique composition.
 
 ## Quick start
 
@@ -27,9 +29,16 @@ pnpm exec santi-og init
 pnpm exec santi-og generate
 ```
 
-The generated `og.config.mjs` is a complete SVG-to-WebP example. Replace its card data and SVG
-with your project content and visual identity. See the [package guide](packages/og/README.md) for
-configuration, Satori, static assets, worker threads, caching, cleanup, and migration guidance.
+The generated `og.config.mjs` starts with the neutral product preset. Replace its sample cards,
+brand, and theme—there is no SVG template to maintain.
+
+## Visual examples
+
+See all four presets rendered with real package output in the
+[live gallery](https://og.santi020k.com/#examples), then open the
+[example-led documentation](https://og.santi020k.com/docs/) to copy a preset, Astro content,
+Sharp, or Satori configuration. The [package guide](packages/og/README.md) also covers static
+assets, worker threads, caching, cleanup, and migration guidance.
 
 ## Workspace
 

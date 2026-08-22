@@ -5,7 +5,13 @@ import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { compare } from '../src/compare.js'
-import { createEncodedRenderer, fromLegacyCards, relativeOutput } from '../src/composition.js'
+import {
+  createEncodedRenderer,
+  createPathCards,
+  fromLegacyCards,
+  pathnameOutput,
+  relativeOutput
+} from '../src/composition.js'
 import { generate } from '../src/generate.js'
 import type { OgCard, OgConfig, OgRenderer } from '../src/types.js'
 
@@ -45,6 +51,19 @@ describe('generate', () => {
       root: '/tmp',
       width: 1200
     })).toBe('<svg>Legacy</svg>')
+  })
+
+  it('maps URL pathnames to portable card outputs', () => {
+    expect(pathnameOutput('/docs/getting started/', { extension: '.png' }))
+      .toBe('docs--getting~20started.png')
+
+    expect(createPathCards([
+      { data: { title: 'Home' }, pathname: '/' },
+      { data: { title: 'API' }, pathname: '/docs/api' }
+    ], { directory: 'pages' })).toEqual([
+      { data: { title: 'Home' }, output: 'pages/index.webp' },
+      { data: { title: 'API' }, output: 'pages/docs--api.webp' }
+    ])
   })
 
   it('writes cards and skips unchanged outputs using content fingerprints', async () => {

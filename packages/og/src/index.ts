@@ -1,7 +1,25 @@
 export { compare, type OgComparison, type OgImageDetails } from './compare.js'
-export { createEncodedRenderer, fromLegacyCards, relativeOutput } from './composition.js'
+export {
+  createEncodedRenderer,
+  createPathCards,
+  fromLegacyCards,
+  type PathCardOptions,
+  type PathCardSpec,
+  pathnameOutput,
+  relativeOutput
+} from './composition.js'
 export { defineConfig, defineWorkerRenderer } from './config.js'
 export { generate } from './generate.js'
+export {
+  createPresetRenderer,
+  definePresetConfig,
+  type PresetBrand,
+  type PresetCardData,
+  type PresetConfig,
+  type PresetRendererOptions,
+  type PresetTheme,
+  type PresetVariant
+} from './presets.js'
 export type {
   Awaitable,
   GenerateOptions,

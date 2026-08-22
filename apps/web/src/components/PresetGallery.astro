@@ -1,0 +1,53 @@
+---
+import { Badge, Card } from '@santi020k/lumen-astro'
+
+const presets = [
+  {
+    description: 'A clean default for home pages, status pages, and general sharing.',
+    image: '/og/presets/simple.webp',
+    label: 'Simple',
+    variant: 'simple'
+  },
+  {
+    description: 'Editorial composition for posts, guides, changelogs, and announcements.',
+    image: '/og/presets/article.webp',
+    label: 'Article',
+    variant: 'article'
+  },
+  {
+    description: 'Structured visual language for references, component docs, and tutorials.',
+    image: '/og/presets/docs.webp',
+    label: 'Docs',
+    variant: 'docs'
+  },
+  {
+    description: 'Product-focused framing for apps, tools, launches, and landing pages.',
+    image: '/og/presets/product.webp',
+    label: 'Product',
+    variant: 'product'
+  }
+] as const
+---
+
+<div class="preset-gallery">
+  {presets.map(preset => (
+    <Card as="article" className="preset-example" variant="muted">
+      <div class="preset-example__image">
+        <img
+          src={preset.image}
+          width="1200"
+          height="630"
+          loading="lazy"
+          alt={`${preset.label} Open Graph preset example`}
+        />
+      </div>
+      <div class="preset-example__body">
+        <div>
+          <h3>{preset.label}</h3>
+          <p>{preset.description}</p>
+        </div>
+        <Badge variant="outline">variant: '{preset.variant}'</Badge>
+      </div>
+    </Card>
+  ))}
+</div>

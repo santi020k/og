@@ -1,0 +1,273 @@
+import { access, readFile } from 'node:fs/promises'
+import path from 'node:path'
+
+import { createSharpRenderer, type SharpRendererOptions } from './renderers/sharp.js'
+import { defineConfig } from './config.js'
+import type { OgConfig, OgRenderContext, OgRenderer } from './types.js'
+
+export type PresetVariant = 'article' | 'docs' | 'product' | 'simple'
+
+export interface PresetBrand {
+  domain?: string
+  logo?: string
+  name: string
+}
+
+export interface PresetCardData {
+  accent?: string
+  badge?: string
+  brand?: Partial<PresetBrand>
+  description?: string
+  domain?: string
+  eyebrow?: string
+  image?: string
+  title: string
+  variant?: PresetVariant
+}
+
+export interface PresetTheme {
+  accent: string
+  background: string
+  foreground: string
+  muted: string
+  panel: string
+}
+
+export interface PresetRendererOptions {
+  brand?: PresetBrand
+  sharp?: Omit<SharpRendererOptions<never>, 'renderSvg'>
+  theme?: Partial<PresetTheme>
+  variant?: PresetVariant
+}
+
+export interface PresetConfig<T extends PresetCardData = PresetCardData>
+  extends Omit<OgConfig<T>, 'renderer'> {
+  preset?: PresetRendererOptions
+}
+
+const DEFAULT_THEME: PresetTheme = {
+  accent: '#7c3aed',
+  background: '#0f172a',
+  foreground: '#f8fafc',
+  muted: '#cbd5e1',
+  panel: '#1e293b'
+}
+
+const MIME_TYPES: Readonly<Record<string, string>> = {
+  '.avif': 'image/avif',
+  '.gif': 'image/gif',
+  '.jpeg': 'image/jpeg',
+  '.jpg': 'image/jpeg',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp'
+}
+
+const escapeXml = (value: string): string => value
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll('\'', '&#39;')
+
+const exists = async (filePath: string): Promise<boolean> => {
+  try {
+    await access(filePath)
+
+    return true
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false
+
+    throw error
+  }
+}
+
+const resolveImage = async (source: string | undefined, context: OgRenderContext): Promise<string | undefined> => {
+  if (!source || /^(?:data:|https?:\/\/)/u.test(source)) return source
+
+  const filePath = path.isAbsolute(source) ? source : path.resolve(context.root, source)
+
+  if (!await exists(filePath)) return source
+
+  const mime = MIME_TYPES[path.extname(filePath).toLowerCase()]
+
+  if (!mime) throw new Error(`Unsupported preset image format: ${source}`)
+
+  return `data:${mime};base64,${(await readFile(filePath)).toString('base64')}`
+}
+
+const wrapText = (value: string, limit: number, maximumLines: number): string[] => {
+  const lines: string[] = []
+  let current = ''
+
+  for (const word of value.trim().split(/\s+/u)) {
+    const next = current ? `${current} ${word}` : word
+
+    if (next.length > limit && current) {
+      lines.push(current)
+
+      current = word
+    } else {
+      current = next
+    }
+
+    if (lines.length === maximumLines) break
+  }
+
+  if (current && lines.length < maximumLines) lines.push(current)
+
+  if (lines.join(' ').length < value.trim().length && lines.length > 0) {
+    const last = lines.length - 1
+
+    lines[last] = `${lines[last]?.replace(/[,.!?;:]?$/u, '') ?? ''}…`
+  }
+
+  return lines
+}
+
+const textLines = (parameters: {
+  color: string
+  fontSize: number
+  fontWeight: number
+  lineHeight: number
+  lines: readonly string[]
+  x: number
+  y: number
+}): string => parameters.lines.map((line, index) => (
+  `<text x="${parameters.x}" y="${parameters.y + index * parameters.lineHeight}" ` +
+  `fill="${parameters.color}" font-family="Arial, Helvetica, sans-serif" ` +
+  `font-size="${parameters.fontSize}" font-weight="${parameters.fontWeight}">` +
+  `${escapeXml(line)}</text>`
+)).join('')
+
+const variantLabel = (variant: PresetVariant): string => ({
+  article: 'ARTICLE',
+  docs: 'DOCUMENTATION',
+  product: 'PRODUCT',
+  simple: 'OPEN GRAPH'
+})[variant]
+
+const titleFontSize = (title: string): number => {
+  if (title.length > 72) return 54
+
+  if (title.length > 46) return 64
+
+  return 76
+}
+
+const variantDecoration = (variant: PresetVariant, accent: string): string => {
+  if (variant === 'article') {
+    return `
+      <g transform="translate(790 178)">
+        <rect width="326" height="310" rx="34" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.13)"/>
+        <rect x="38" y="48" width="250" height="18" rx="9" fill="${accent}" opacity="0.8"/>
+        <rect x="38" y="94" width="218" height="12" rx="6" fill="rgba(255,255,255,0.42)"/>
+        <rect x="38" y="126" width="246" height="12" rx="6" fill="rgba(255,255,255,0.3)"/>
+        <rect x="38" y="158" width="186" height="12" rx="6" fill="rgba(255,255,255,0.3)"/>
+        <circle cx="62" cy="244" r="24" fill="${accent}" opacity="0.72"/>
+        <rect x="102" y="228" width="154" height="12" rx="6" fill="rgba(255,255,255,0.42)"/>
+        <rect x="102" y="252" width="104" height="9" rx="4.5" fill="rgba(255,255,255,0.24)"/>
+      </g>`
+  }
+
+  if (variant === 'docs') {
+    return `
+      <g transform="translate(818 170)" fill="none" stroke-linecap="round">
+        <rect width="286" height="326" rx="32" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.13)"/>
+        <path d="M50 78h186M50 126h142M50 174h186M50 222h116" stroke="rgba(255,255,255,0.38)" stroke-width="14"/>
+        <path d="M50 270h92" stroke="${accent}" stroke-width="14"/>
+      </g>`
+  }
+
+  if (variant === 'product') {
+    return `
+      <g transform="translate(796 164)">
+        <rect width="320" height="340" rx="44" fill="${accent}" opacity="0.16"/>
+        <rect x="34" y="32" width="252" height="276" rx="30" fill="rgba(15,23,42,0.74)" stroke="rgba(255,255,255,0.16)"/>
+        <circle cx="160" cy="132" r="62" fill="${accent}" opacity="0.88"/>
+        <path d="M132 132h56M160 104v56" stroke="white" stroke-width="12" stroke-linecap="round"/>
+        <rect x="78" y="230" width="164" height="16" rx="8" fill="rgba(255,255,255,0.42)"/>
+        <rect x="108" y="262" width="104" height="11" rx="5.5" fill="rgba(255,255,255,0.24)"/>
+      </g>`
+  }
+
+  return `
+    <g transform="translate(846 194)">
+      <circle cx="120" cy="120" r="118" fill="${accent}" opacity="0.16"/>
+      <circle cx="120" cy="120" r="74" fill="none" stroke="${accent}" stroke-width="3" opacity="0.76"/>
+      <circle cx="120" cy="120" r="24" fill="${accent}"/>
+    </g>`
+}
+
+const renderPresetSvg = async (
+  data: PresetCardData,
+  context: OgRenderContext,
+  options: PresetRendererOptions
+): Promise<string> => {
+  const variant = data.variant ?? options.variant ?? 'simple'
+  const theme = { ...DEFAULT_THEME, ...options.theme }
+  const accent = data.accent ?? theme.accent
+  const brand = { name: 'Open Graph', ...options.brand, ...data.brand }
+  const domain = data.domain ?? brand.domain
+  const image = await resolveImage(data.image, context)
+  const logo = await resolveImage(brand.logo, context)
+  const hasVisual = Boolean(image) || variant !== 'simple'
+  const titleSize = hasVisual ? Math.min(titleFontSize(data.title), 60) : titleFontSize(data.title)
+  const titleLines = wrapText(data.title, hasVisual ? 18 : 30, 3)
+  const descriptionLines = data.description ? wrapText(data.description, hasVisual ? 48 : 76, 2) : []
+  const badge = data.badge ?? data.eyebrow ?? variantLabel(variant)
+  const contentWidth = hasVisual ? 650 : 990
+  const descriptionY = 354 + (titleLines.length - 1) * (titleSize * 1.06) + 46
+
+  const visual = image ?
+    `<g clip-path="url(#visual)"><rect x="778" y="156" width="350" height="352" rx="40" fill="${theme.panel}"/><image href="${escapeXml(image)}" x="778" y="156" width="350" height="352" preserveAspectRatio="xMidYMid slice"/></g><rect x="778" y="156" width="350" height="352" rx="40" fill="none" stroke="white" stroke-opacity="0.16"/>` :
+    ''
+
+  const decoration = image || !hasVisual ? visual : variantDecoration(variant, accent)
+
+  return `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${context.width} ${context.height}" role="img" aria-label="${escapeXml(data.title)}">
+  <defs>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(${context.width * 0.88} ${context.height * 0.14}) rotate(135) scale(${context.width * 0.66})">
+      <stop stop-color="${accent}" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="${theme.background}" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="52" height="52" patternUnits="userSpaceOnUse">
+      <path d="M52 0H0v52" fill="none" stroke="white" stroke-opacity="0.045"/>
+    </pattern>
+    <clipPath id="visual"><rect x="778" y="156" width="350" height="352" rx="40"/></clipPath>
+  </defs>
+  <rect width="100%" height="100%" fill="${theme.background}"/>
+  <rect width="100%" height="100%" fill="url(#glow)"/>
+  <rect width="100%" height="100%" fill="url(#grid)"/>
+  <rect x="28" y="28" width="${context.width - 56}" height="${context.height - 56}" rx="38" fill="none" stroke="white" stroke-opacity="0.08"/>
+  ${logo ? `<image href="${escapeXml(logo)}" x="72" y="62" width="64" height="64" preserveAspectRatio="xMidYMid meet"/>` : `<rect x="72" y="62" width="64" height="64" rx="18" fill="${accent}"/><circle cx="104" cy="94" r="12" fill="white" opacity="0.92"/>`}
+  <text x="154" y="91" fill="${theme.foreground}" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="800">${escapeXml(brand.name)}</text>
+  ${domain ? `<text x="154" y="118" fill="${theme.muted}" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="600">${escapeXml(domain)}</text>` : ''}
+  <g transform="translate(72 166)">
+    <rect width="${Math.min(360, badge.length * 10 + 54)}" height="38" rx="19" fill="${theme.panel}" stroke="${accent}" stroke-opacity="0.62"/>
+    <circle cx="20" cy="19" r="5" fill="${accent}"/>
+    <text x="36" y="25" fill="${theme.foreground}" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="800" letter-spacing="1.5">${escapeXml(badge.toUpperCase())}</text>
+  </g>
+  ${textLines({ color: theme.foreground, fontSize: titleSize, fontWeight: 800, lineHeight: titleSize * 1.06, lines: titleLines, x: 72, y: 294 })}
+  ${descriptionLines.length > 0 ? textLines({ color: theme.muted, fontSize: 23, fontWeight: 500, lineHeight: 34, lines: descriptionLines, x: 74, y: descriptionY }) : ''}
+  <rect x="72" y="578" width="${Math.min(contentWidth, 190)}" height="5" rx="2.5" fill="${accent}"/>
+  ${decoration}
+</svg>`.replaceAll(/[ \t]+$/gmu, '').trim()
+}
+
+export const createPresetRenderer = <T extends PresetCardData = PresetCardData>(
+  options: PresetRendererOptions = {}
+): OgRenderer<T> => createSharpRenderer<T>({
+  ...options.sharp,
+  renderSvg: (data, context) => renderPresetSvg(data, context, options),
+  webp: options.sharp?.webp ?? { effort: 4, quality: 86 }
+})
+
+export const definePresetConfig = <T extends PresetCardData = PresetCardData>(
+  config: PresetConfig<T>
+): OgConfig<T> => {
+  const { preset, ...shared } = config
+
+  return defineConfig({ ...shared, renderer: createPresetRenderer<T>(preset) })
+}

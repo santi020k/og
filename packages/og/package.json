@@ -1,7 +1,7 @@
 {
   "name": "@santi020k/og",
-  "version": "0.2.1",
-  "description": "Generate deterministic Open Graph images with project-owned designs and a reusable pipeline.",
+  "version": "0.3.0",
+  "description": "Generate deterministic Open Graph images with reusable presets or project-owned renderers.",
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.js",
@@ -10,6 +10,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./astro": {
+      "types": "./dist/astro.d.ts",
+      "default": "./dist/astro.js"
+    },
+    "./presets": {
+      "types": "./dist/presets.d.ts",
+      "default": "./dist/presets.js"
     },
     "./sharp": {
       "types": "./dist/renderers/sharp.d.ts",
@@ -49,7 +57,8 @@
     "@resvg/resvg-js": "^2.6.2",
     "satori": "^0.33.3",
     "satori-html": "^0.3.2",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "yaml": "^2.8.1"
   },
   "devDependencies": {
     "@santi020k/eslint-config-basic": "^3.5.1",

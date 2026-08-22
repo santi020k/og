@@ -1,5 +1,7 @@
 ---
 import Seo from '../components/Seo.astro'
+import { UIPrimitives } from '@santi020k/lumen-astro'
+import '@santi020k/lumen-astro/styles.css'
 import '../styles/global.css'
 
 interface Props {
@@ -11,7 +13,7 @@ const { description, title } = Astro.props
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
@@ -19,6 +21,7 @@ const { description, title } = Astro.props
   </head>
   <body>
     <a class="skip-link" href="#content">Skip to content</a>
+    <UIPrimitives />
     <slot />
   </body>
 </html>
