@@ -48,6 +48,31 @@ test('version matches the package manifest', async () => {
   assert.equal(result.stdout.trim(), packageManifest.version)
 })
 
+test('loads an explicitly requested config file', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'santi-og-cli-explicit-'))
+
+  try {
+    const configPath = path.join(root, 'cards.mjs')
+
+    await writeFile(configPath, `export default {
+  cards: [{ data: { title: 'Explicit' }, output: 'index.svg' }],
+  renderer: data => \`<svg>\${data.title}</svg>\`,
+}\n`)
+
+    const result = await run(
+      process.execPath,
+      [path.resolve('dist/cli.js'), 'generate', '--config', configPath],
+      root
+    )
+
+    assert.equal(result.code, 0, result.stderr)
+
+    assert.equal(await readFile(path.join(root, 'public/og/index.svg'), 'utf8'), '<svg>Explicit</svg>')
+  } finally {
+    await rm(root, { force: true, recursive: true })
+  }
+})
+
 test('discovers a package-level config shorthand and compares without writing', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'santi-og-cli-package-'))
 

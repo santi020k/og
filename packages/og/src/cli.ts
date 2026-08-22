@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { access, readFile, writeFile } from 'node:fs/promises'
+import { access, readFile, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
@@ -9,7 +9,7 @@ import { compare } from './compare.js'
 import { generate } from './generate.js'
 import type { OgConfig } from './types.js'
 
-const VERSION = '0.2.0'
+const VERSION = '0.2.1'
 
 const CONFIG_NAMES = [
   'og.config.mjs',
@@ -57,7 +57,15 @@ const exists = async (filePath: string): Promise<boolean> => {
 const findConfig = async (requested: string | undefined): Promise<string> => {
   const base = path.resolve(requested ?? '.')
 
-  if (requested && !await exists(path.join(base, 'package.json'))) return base
+  if (requested) {
+    try {
+      if ((await stat(base)).isFile()) return base
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return base
+
+      throw error
+    }
+  }
 
   for (const name of CONFIG_NAMES) {
     const candidate = path.resolve(base, name)

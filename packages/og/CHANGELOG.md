@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 - 2026-08-22
+
+- Fix explicit `--config` file paths being treated as package directories.
+
 ## 0.2.0 - 2026-08-22
 
 - Verify output-content digests and discover transitive worker sources.
