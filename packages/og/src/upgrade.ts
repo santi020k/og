@@ -118,12 +118,13 @@ export const upgradeProject = async (parameters: {
         updateYamlCatalogs(workspace.catalogs, parameters.version, changes)
 
         const excluded = workspace.minimumReleaseAgeExclude
+        const packageFound = changes.length > 0
 
-        if (Array.isArray(excluded) && !excluded.includes('@santi020k/og')) {
+        if (packageFound && Array.isArray(excluded) && !excluded.includes('@santi020k/og')) {
           excluded.push('@santi020k/og')
 
           changes.push({ file: 'pnpm-workspace.yaml', from: '(not excluded)', to: '@santi020k/og' })
-        } else if (workspace.minimumReleaseAge !== undefined && excluded === undefined) {
+        } else if (packageFound && workspace.minimumReleaseAge !== undefined && excluded === undefined) {
           workspace.minimumReleaseAgeExclude = ['@santi020k/og']
 
           changes.push({ file: 'pnpm-workspace.yaml', from: '(not excluded)', to: '@santi020k/og' })

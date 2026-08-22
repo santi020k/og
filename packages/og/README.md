@@ -382,7 +382,8 @@ Use `santi-og check` in CI to fail when an output is missing or stale without ch
 
 Use `santi-og compare --threshold 0.01` during migrations. It renders into a temporary directory,
 reports the format, dimensions, byte size, and decoded pixel difference against each existing
-output, and fails when a card exceeds the accepted difference. Add `--json` for automation.
+output. It fails when a card exceeds the accepted difference and always fails for missing outputs
+or dimension changes, which cannot be expressed as a pixel ratio. Add `--json` for automation.
 
 `santi-og migrate --report` inventories logical cards, physical outputs, local renderer modules,
 and remaining custom-renderer responsibilities. `santi-og upgrade --to 0.4.0` updates regular

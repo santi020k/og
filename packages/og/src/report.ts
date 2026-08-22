@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 
+import { isPresetRenderer } from './preset-marker.js'
 import type { OgCard, OgConfig, OgFormat } from './types.js'
 import { GENERATOR_VERSION } from './version.js'
 
@@ -46,7 +47,7 @@ export const createMigrationReport = async <T>(parameters: {
     .map(match => match[1])
     .filter((specifier): specifier is string => Boolean(specifier))
 
-  const customRenderer = !cacheKey?.startsWith('preset-v')
+  const customRenderer = !isPresetRenderer(parameters.config.renderer)
   const recommendations: string[] = []
 
   if (customRenderer) recommendations.push('Evaluate definePresetConfig before retaining a custom renderer.')

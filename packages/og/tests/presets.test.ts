@@ -6,6 +6,7 @@ import sharp from 'sharp'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { collectAstroContentCards, readAstroContent } from '../src/astro.js'
+import { defineConfig } from '../src/config.js'
 import { collectContentCards, readContent } from '../src/content.js'
 import { generate } from '../src/generate.js'
 import {
@@ -13,6 +14,7 @@ import {
   definePresetConfig,
   type PresetCardData
 } from '../src/presets.js'
+import { createMigrationReport } from '../src/report.js'
 import { wrapMeasuredText } from '../src/typography.js'
 
 const directories: string[] = []
@@ -75,6 +77,30 @@ describe('preset renderer', () => {
 
     await expect(readFile(path.join(root, 'public/og/index.svg'), 'utf8'))
       .resolves.toContain('Hello')
+  })
+
+  it('reports preset usage independently from public cache keys', async () => {
+    const root = await createRoot()
+    const cards = [{ data: { title: 'Hello' }, output: 'index.svg' }] as const
+    const preset = definePresetConfig({ cache: false, cards, root })
+
+    const custom = defineConfig({
+      cache: { key: 'preset-v1' },
+      cards,
+      renderer: (data: PresetCardData) => `<svg>${data.title}</svg>`,
+      root
+    })
+
+    const parameters = {
+      configContents: 'export default {}',
+      configPath: path.join(root, 'og.config.mjs')
+    }
+
+    await expect(createMigrationReport({ ...parameters, config: preset }))
+      .resolves.toMatchObject({ customRenderer: false })
+
+    await expect(createMigrationReport({ ...parameters, config: custom }))
+      .resolves.toMatchObject({ customRenderer: true })
   })
 
   it('embeds deterministic typography and safely wraps long unbroken titles', async () => {

@@ -220,12 +220,16 @@ const executeGeneration = async (
       ...(concurrency === undefined ? {} : { concurrency })
     })
 
+    const exceedsThreshold = threshold !== undefined && comparisons.some(comparison => (
+      comparison.status !== 'identical' && (
+        comparison.pixelDifference === undefined || comparison.pixelDifference.ratio > threshold
+      )
+    ))
+
     if (commandOptions.json) {
       process.stdout.write(`${JSON.stringify({ command, comparisons, version: VERSION }, null, 2)}\n`)
 
-      if (threshold !== undefined && comparisons.some(comparison => (
-        comparison.pixelDifference?.ratio !== undefined && comparison.pixelDifference.ratio > threshold
-      ))) process.exitCode = 1
+      if (threshold !== undefined && exceedsThreshold) process.exitCode = 1
 
       return
     }
@@ -241,9 +245,7 @@ const executeGeneration = async (
       process.stdout.write(`  ${comparison.status.padEnd(9)} ${comparison.output}: ${actual}${expected}${pixels}\n`)
     }
 
-    if (threshold !== undefined && comparisons.some(comparison => (
-      comparison.pixelDifference?.ratio !== undefined && comparison.pixelDifference.ratio > threshold
-    ))) process.exitCode = 1
+    if (threshold !== undefined && exceedsThreshold) process.exitCode = 1
 
     return
   }

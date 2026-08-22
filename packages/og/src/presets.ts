@@ -3,6 +3,7 @@ import path from 'node:path'
 
 import { createSharpRenderer, type SharpRendererOptions } from './renderers/sharp.js'
 import { defineConfig } from './config.js'
+import { markPresetRenderer } from './preset-marker.js'
 import type { OgConfig, OgRenderContext, OgRenderer } from './types.js'
 import {
   loadPresetFont,
@@ -266,11 +267,11 @@ const renderPresetSvg = async (
 
 export const createPresetRenderer = <T extends PresetCardData = PresetCardData>(
   options: PresetRendererOptions = {}
-): OgRenderer<T> => createSharpRenderer<T>({
+): OgRenderer<T> => markPresetRenderer(createSharpRenderer<T>({
   ...options.sharp,
   renderSvg: (data, context) => renderPresetSvg(data, context, options),
   webp: options.sharp?.webp ?? { effort: 4, quality: 86 }
-})
+}))
 
 export const definePresetConfig = <T extends PresetCardData = PresetCardData>(
   config: PresetConfig<T>

@@ -103,6 +103,48 @@ test('discovers a package-level config shorthand and compares without writing', 
   }
 })
 
+test('comparison thresholds fail missing and dimension-changing outputs', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'santi-og-cli-threshold-'))
+
+  try {
+    const configPath = path.join(root, 'og.config.mjs')
+    const cli = path.resolve('dist/cli.js')
+
+    const config = width => `export default {
+  cards: [{ data: { title: 'Threshold' }, output: 'index.svg' }],
+  renderer: data => \`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="10">\${data.title}</svg>\`,
+}\n`
+
+    await writeFile(configPath, config(10))
+
+    const generated = await run(process.execPath, [cli, 'generate'], root)
+
+    assert.equal(generated.code, 0, generated.stderr)
+
+    await rm(path.join(root, 'public/og/index.svg'))
+
+    const missing = await run(process.execPath, [cli, 'compare', '--threshold', '1'], root)
+
+    assert.equal(missing.code, 1, missing.stderr)
+
+    assert.match(missing.stdout, /missing\s+index\.svg/)
+
+    const regenerated = await run(process.execPath, [cli, 'generate', '--force'], root)
+
+    assert.equal(regenerated.code, 0, regenerated.stderr)
+
+    await writeFile(configPath, config(20))
+
+    const resized = await run(process.execPath, [cli, 'compare', '--threshold', '1'], root)
+
+    assert.equal(resized.code, 1, resized.stderr)
+
+    assert.match(resized.stdout, /changed\s+index\.svg/)
+  } finally {
+    await rm(root, { force: true, recursive: true })
+  }
+})
+
 test('prints machine-readable generation and migration reports', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'santi-og-cli-report-'))
 
@@ -168,6 +210,36 @@ catalog:
     assert.match(upgraded, /minimumReleaseAgeExclude:\n {2}- ["']@santi020k\/og["']/)
 
     assert.match(await readFile(path.join(root, 'package.json'), 'utf8'), /"catalog:"/)
+  } finally {
+    await rm(root, { force: true, recursive: true })
+  }
+})
+
+test('does not add release-age exclusions when the package is absent', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'santi-og-cli-upgrade-absent-'))
+
+  try {
+    await writeFile(path.join(root, 'package.json'), '{}\n')
+
+    const workspacePath = path.join(root, 'pnpm-workspace.yaml')
+
+    const workspace = `packages: []
+minimumReleaseAge: 1440
+`
+
+    await writeFile(workspacePath, workspace)
+
+    const result = await run(
+      process.execPath,
+      [path.resolve('dist/cli.js'), 'upgrade', '--root', root, '--to', '0.4.0'],
+      root
+    )
+
+    assert.equal(result.code, 1)
+
+    assert.match(result.stderr, /No @santi020k\/og dependency or pnpm catalog entry was found/)
+
+    assert.equal(await readFile(workspacePath, 'utf8'), workspace)
   } finally {
     await rm(root, { force: true, recursive: true })
   }
