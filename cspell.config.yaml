@@ -7,6 +7,7 @@ words:
   - Contrac
   - esbuild
   - frontmatter
+  - fontkit
   - lock-in
   - Molina
   - monorepos
@@ -18,6 +19,7 @@ words:
   - Starlight
   - structured
   - WebP
+  - wght
 ignorePaths:
   - .astro/**
   - .turbo/**

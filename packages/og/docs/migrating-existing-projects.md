@@ -1,7 +1,9 @@
 # Migrating existing projects
 
-Version 0.3 adds a default design layer. A consumer now chooses between a compact preset config and
-a custom renderer; both use the same deterministic generation, caching, cleanup, and CI behavior.
+Version 0.4 adds typed catalog mapping, multi-format cards, deterministic typography,
+version-aware caching, richer content filters, and migration automation on top of the default design
+layer introduced in 0.3. Preset and custom renderers use the same generation, caching, cleanup, and
+CI behavior.
 
 ## Prefer a preset for conventional cards
 
@@ -61,7 +63,25 @@ export default definePresetConfig({
 ```
 
 The helper understands nested `index.md` routes, excludes drafts by default, and automatically
-tracks each content file as a card source. Custom callbacks can map data, output paths, and covers.
+tracks each content file as a card source. Use `include` and `exclude` before parsing, `filter` and a
+custom `draft` predicate after parsing, `coverFields` for fallbacks, and `aggregate` for tag,
+pagination, or locale cards.
+
+## Typed data catalogs and multiple formats
+
+Use `createCards` for typed arrays, JSON, CMS results, pagination, or derived archives. It maps the
+catalog once and can apply shared destinations, aliases, dimensions, and formats:
+
+```ts
+const cards = createCards(products, product => ({
+  title: product.name,
+  variant: 'product',
+}), {
+  output: product => `products/${product.slug}.webp`,
+  formats: ['png', 'svg'],
+  formatAliases: product => ({ png: [`share/${product.slug}.png`] }),
+})
+```
 
 ## Keep a custom renderer when it is meaningful
 
@@ -79,16 +99,22 @@ export default defineConfig({
 })
 ```
 
-If a project publishes multiple names in the same format, use `aliases` to render once. Keep one
-card per format when publishing both SVG and raster output because encoding is selected by extension.
-Use `outputDirectories` for multi-app repositories and `assets` for pass-through files.
+If a project publishes multiple names in the same format, use `aliases` to reuse the primary bytes.
+Use `formats` and `formatAliases` when one logical card publishes SVG and raster variants. Use
+`outputDirectories` for multi-app repositories and `assets` for pass-through files.
+
+Keep unrelated media pipelines separate. A preset `og.config.mjs` can replace the old social-card
+renderer while a launch-video or diagram script keeps its specialized renderer and dependencies.
 
 ## Migrated repository pattern
 
-The v0.3 migration uses presets for Lumen, commitprompt, Cult, PostLens, workspace-organizer,
+The migration uses presets for Lumen, commitprompt, Cult, PostLens, workspace-organizer,
 santi020k-theme, Astro Doctor, eslint-config-basic, santi020k.com, and ContracTrack. Their route and
 content definitions remain local, while their SVG escaping, text wrapping, Sharp setup, worker
 wrappers, and repeated output mapping are removed.
 
-Run `santi-og compare` when visual parity is required. It renders in a temporary directory and
-reports format, dimensions, byte size, and decoded pixel differences without replacing outputs.
+Start with `santi-og migrate --report --json` to inventory the remaining work. Run
+`santi-og compare --threshold 0.01` when visual parity is required; it renders in a temporary
+directory and can fail CI when decoded pixel differences exceed the chosen ratio. Use
+`santi-og upgrade --to 0.4.0` to update package manifests or pnpm catalogs, then run the package
+manager install command yourself.

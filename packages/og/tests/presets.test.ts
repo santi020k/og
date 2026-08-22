@@ -6,12 +6,14 @@ import sharp from 'sharp'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { collectAstroContentCards, readAstroContent } from '../src/astro.js'
+import { collectContentCards, readContent } from '../src/content.js'
 import { generate } from '../src/generate.js'
 import {
   createPresetRenderer,
   definePresetConfig,
   type PresetCardData
 } from '../src/presets.js'
+import { wrapMeasuredText } from '../src/typography.js'
 
 const directories: string[] = []
 
@@ -74,9 +76,58 @@ describe('preset renderer', () => {
     await expect(readFile(path.join(root, 'public/og/index.svg'), 'utf8'))
       .resolves.toContain('Hello')
   })
+
+  it('embeds deterministic typography and safely wraps long unbroken titles', async () => {
+    const renderer = createPresetRenderer({ variant: 'product' })
+
+    const output = await renderer({
+      title: 'InternationalizationSupercalifragilisticEmojiFamily👨‍👩‍👧‍👦WithoutWhitespace'
+    }, {
+      format: 'svg',
+      height: 630,
+      outputPath: '/tmp/card.svg',
+      root: '/tmp',
+      width: 1200
+    })
+
+    expect(output).toEqual(expect.any(String))
+
+    expect(output).toContain('@font-face')
+
+    expect(output).toContain('Inter Variable')
+
+    expect(output).not.toContain('rgba(')
+  })
+
+  it('keeps joined emoji graphemes intact while splitting long tokens', () => {
+    const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+    const family = '👨‍👩‍👧‍👦'
+
+    const lines = wrapMeasuredText({
+      font: {
+        css: '',
+        family: 'Test',
+        measure: value => [...segmenter.segment(value)].length
+      },
+      fontSize: 1,
+      maximumLines: 10,
+      maximumWidth: 2,
+      value: `ab${family}cd`
+    })
+
+    expect(lines.some(line => line.includes(family))).toBe(true)
+
+    expect(lines.join('')).toBe(`ab${family}cd`)
+  })
 })
 
-describe('Astro content helpers', () => {
+describe('framework-neutral content helpers', () => {
+  it('preserves the Astro entry point as compatibility aliases', () => {
+    expect(collectAstroContentCards).toBe(collectContentCards)
+
+    expect(readAstroContent).toBe(readContent)
+  })
+
   it('reads nested Markdown and maps frontmatter to preset cards', async () => {
     const root = await createRoot()
     const content = path.join(root, 'src/content/blog')
@@ -148,5 +199,55 @@ cover: public/cover.png
     expect(typeof cards[0]?.sources).not.toBe('function')
 
     expect(cards[0]?.sources).toHaveLength(2)
+  })
+
+  it('filters before parsing, applies draft and cover fallbacks, and aggregates derived cards', async () => {
+    const root = await createRoot()
+    const content = path.join(root, 'content')
+
+    await mkdir(path.join(content, 'en'), { recursive: true })
+
+    await mkdir(path.join(content, 'private'), { recursive: true })
+
+    await writeFile(path.join(content, 'en/guide.md'), `---
+title: Included
+hero: public/guide.png
+status: hidden
+---
+`)
+
+    await writeFile(path.join(content, 'private/secret.md'), `---
+title: Secret
+---
+`)
+
+    const cards = await collectAstroContentCards({
+      aggregate: (entries, mapped) => [{
+        data: { title: `${mapped.length} of ${entries.length} entries`, variant: 'simple' },
+        output: 'summary.webp'
+      }],
+      coverFields: ['hero'],
+      directory: 'content',
+      draft: entry => entry.frontmatter.status === 'draft',
+      exclude: ['private/**'],
+      filter: entry => entry.frontmatter.status !== 'hidden',
+      include: ['en/**'],
+      root
+    })
+
+    expect(cards).toEqual([{
+      data: { title: '0 of 1 entries', variant: 'simple' },
+      output: 'summary.webp'
+    }])
+
+    const included = await collectAstroContentCards({
+      coverFields: ['hero'],
+      directory: 'content',
+      exclude: ['private/**'],
+      include: ['en/**'],
+      root
+    })
+
+    expect(included[0]?.data).toMatchObject({ image: 'public/guide.png', title: 'Included' })
   })
 })

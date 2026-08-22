@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { compare } from '../src/compare.js'
 import {
+  createCards,
   createEncodedRenderer,
   createPathCards,
   fromLegacyCards,
@@ -66,6 +67,46 @@ describe('generate', () => {
     ])
   })
 
+  it('maps typed catalogs and renders multiple formats with format-aware aliases', async () => {
+    const root = await createRoot()
+
+    const cards = createCards(
+      [{ slug: 'hello', title: 'Hello' }],
+      item => ({ title: item.title }),
+      {
+        formatAliases: () => ({ png: ['social/hello.png'] }),
+        formats: ['png', 'svg'],
+        output: item => `${item.slug}.webp`,
+        sources: item => [`content/${item.slug}.md`]
+      }
+    )
+
+    await mkdir(path.join(root, 'content'))
+
+    await writeFile(path.join(root, 'content/hello.md'), 'Hello')
+
+    const renderer = vi.fn<OgRenderer<CardData>>((data, context) => (
+      context.format === 'svg' ? `<svg>${data.title}</svg>` : Buffer.from(`${context.format}:${data.title}`)
+    ))
+
+    const result = await generate({ cards, renderer, root })
+
+    expect(result.generated).toEqual([
+      'hello.webp',
+      'hello.png',
+      'social/hello.png',
+      'hello.svg'
+    ])
+
+    expect(renderer).toHaveBeenCalledTimes(3)
+
+    await expect(readFile(path.join(root, 'public/og/social/hello.png'), 'utf8'))
+      .resolves.toBe('png:Hello')
+
+    await expect(readFile(path.join(root, '.og-cache.json'), 'utf8'))
+      .resolves.toContain('"generatorVersion": "0.4.0"')
+  })
+
   it('writes cards and skips unchanged outputs using content fingerprints', async () => {
     const root = await createRoot()
     const renderer = vi.fn<OgRenderer<CardData>>(data => `<svg>${data.title}</svg>`)
@@ -119,6 +160,32 @@ describe('generate', () => {
     expect((await generate(config)).generated).toEqual(['index.svg'])
 
     expect(renderer).toHaveBeenCalledTimes(3)
+  })
+
+  it('invalidates every card when the semantic cache key changes', async () => {
+    const root = await createRoot()
+    const renderer = vi.fn<OgRenderer<CardData>>(data => `<svg>${data.title}</svg>`)
+
+    const config: OgConfig<CardData> = {
+      cache: { key: 'renderer-v1' },
+      cards: [{ data: { title: 'Versioned' }, output: 'index.svg' }],
+      renderer,
+      root
+    }
+
+    const first = await generate(config)
+
+    config.cache = { key: 'renderer-v2' }
+
+    const second = await generate(config)
+
+    expect(first.cacheKey).toBe('renderer-v1')
+
+    expect(second.cacheKey).toBe('renderer-v2')
+
+    expect(second.generated).toEqual(['index.svg'])
+
+    expect(renderer).toHaveBeenCalledTimes(2)
   })
 
   it('detects corrupted output bytes in generate and check modes', async () => {

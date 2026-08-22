@@ -25,6 +25,10 @@ export interface OgCard<T = unknown> {
   data: T
   /** Output path relative to outputDirectory, including its extension. */
   output: string
+  /** Additional formats rendered from the same logical card and output stem. */
+  formats?: readonly OgFormat[]
+  /** Format-specific aliases for cards that render more than one format. */
+  formatAliases?: Readonly<Partial<Record<OgFormat, readonly (string | OgOutputTarget)[]>>>
   /** Named directory from outputDirectories. Omit to use outputDirectory. */
   outputDirectory?: string
   /** Additional files whose contents invalidate this card. */
@@ -67,6 +71,8 @@ export interface OgCacheOptions {
   /** Template, font, logo, or asset files shared by every card. */
   /** Paths, glob patterns, or a callback returning either. Absolute paths are supported. */
   sources?: OgSourceCollection
+  /** Consumer renderer or preset revision included in every fingerprint. */
+  key?: string
 }
 
 export interface OgAutoConcurrency {
@@ -123,10 +129,13 @@ export type OgEvent =
   { output: string, type: 'write' }
 
 export interface GenerateResult {
+  cacheKey?: string
   checked: boolean
   cleaned: readonly string[]
   generated: readonly string[]
   skipped: readonly string[]
   stale: readonly string[]
   total: number
+  version: string
+  elapsedMilliseconds: number
 }

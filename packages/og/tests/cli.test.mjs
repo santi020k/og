@@ -102,3 +102,73 @@ test('discovers a package-level config shorthand and compares without writing', 
     await rm(root, { force: true, recursive: true })
   }
 })
+
+test('prints machine-readable generation and migration reports', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'santi-og-cli-report-'))
+
+  try {
+    const configPath = path.join(root, 'og.config.mjs')
+
+    await writeFile(configPath, `export default {
+  cards: [{ data: { title: 'Report' }, formats: ['png'], output: 'index.svg' }],
+  renderer: (data, context) => context.format === 'svg' ? \`<svg>\${data.title}</svg>\` : Buffer.from(data.title),
+}\n`)
+
+    const cli = path.resolve('dist/cli.js')
+    const generated = await run(process.execPath, [cli, 'generate', '--json'], root)
+    const migrated = await run(process.execPath, [cli, 'migrate', '--report', '--json'], root)
+
+    assert.equal(generated.code, 0, generated.stderr)
+
+    assert.equal(migrated.code, 0, migrated.stderr)
+
+    const generation = JSON.parse(generated.stdout)
+    const report = JSON.parse(migrated.stdout)
+
+    assert.equal(generation.version, '0.4.0')
+
+    assert.equal(generation.total, 2)
+
+    assert.equal(report.logicalCards, 1)
+
+    assert.equal(report.physicalOutputs, 2)
+
+    assert.equal(report.customRenderer, true)
+  } finally {
+    await rm(root, { force: true, recursive: true })
+  }
+})
+
+test('upgrades pnpm catalogs and release-age exclusions', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'santi-og-cli-upgrade-'))
+
+  try {
+    await writeFile(path.join(root, 'package.json'), `${JSON.stringify({
+      devDependencies: { '@santi020k/og': 'catalog:' }
+    }, null, 2)}\n`)
+
+    await writeFile(path.join(root, 'pnpm-workspace.yaml'), `packages: []
+minimumReleaseAge: 1440
+catalog:
+  '@santi020k/og': 0.3.0
+`)
+
+    const result = await run(
+      process.execPath,
+      [path.resolve('dist/cli.js'), 'upgrade', '--root', root, '--to', '0.4.0', '--json'],
+      root
+    )
+
+    assert.equal(result.code, 0, result.stderr)
+
+    const upgraded = await readFile(path.join(root, 'pnpm-workspace.yaml'), 'utf8')
+
+    assert.match(upgraded, /["']@santi020k\/og["']: 0\.4\.0/)
+
+    assert.match(upgraded, /minimumReleaseAgeExclude:\n {2}- ["']@santi020k\/og["']/)
+
+    assert.match(await readFile(path.join(root, 'package.json'), 'utf8'), /"catalog:"/)
+  } finally {
+    await rm(root, { force: true, recursive: true })
+  }
+})

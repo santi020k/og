@@ -19,7 +19,8 @@ Use `@santi020k/og` with Astro, Next.js, plain Node.js, monorepos, Markdown coll
 or a static array. Start with the `simple`, `article`, `docs`, or `product` preset and add your
 content and brand. The package handles rendering, output paths, content-aware caching, bounded
 concurrency, safe cleanup, encoding, and CI verification. A custom Sharp or Satori renderer remains
-available when a project needs a unique composition.
+available when a project needs a unique composition. Framework-neutral metadata helpers reuse the
+same page definition for canonical, Open Graph, X, robots, plain HTML, and Next.js metadata.
 
 ## Quick start
 
@@ -36,7 +37,7 @@ brand, and theme—there is no SVG template to maintain.
 
 See all four presets rendered with real package output in the
 [live gallery](https://og.santi020k.com/#examples), then open the
-[example-led documentation](https://og.santi020k.com/docs/) to copy a preset, Astro content,
+[example-led documentation](https://og.santi020k.com/docs/) to copy a preset, portable metadata, Markdown content,
 Sharp, or Satori configuration. The [package guide](packages/og/README.md) also covers static
 assets, worker threads, caching, cleanup, and migration guidance.
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 - 2026-08-22
+
+- Add portable page metadata, card derivation, safe HTML rendering, and a dependency-free Next.js
+  Metadata API adapter.
+- Add a framework-neutral Markdown/MDX content entry point while preserving the Astro helpers as
+  compatibility aliases.
+- Add generic typed card collection mapping, multi-format output, generator and preset cache
+  versioning, JSON summaries, migration reporting, and project upgrades.
+- Bundle deterministic Inter typography and use glyph-aware wrapping in preset layouts.
+
 ## 0.3.0 - 2026-08-22
 
 - Add neutral `simple`, `article`, `docs`, and `product` presets with configurable brand and theme.

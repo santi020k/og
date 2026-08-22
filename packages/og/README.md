@@ -5,7 +5,8 @@ Generate deterministic Open Graph images with a useful default design or a fully
 safe cleanup, image encoding, and CI checks while consumer configs retain their copy and brand data.
 
 It works with Astro, Next.js, plain Node.js, monorepos, Markdown collections, CMS data, or a static
-array. There is no framework runtime.
+array. There is no framework runtime. A portable page definition can drive both the generated image
+and complete Open Graph, X, canonical, robots, and page metadata without repeating content.
 
 ## Quick start
 
@@ -81,16 +82,114 @@ declare changing image paths in per-card `sources` when they are not also part o
 
 `pathnameOutput()` exposes the same deterministic URL-to-filename mapping without creating cards.
 
-## Astro content
+## Typed catalogs and multiple formats
 
-The optional Astro entry point reads Markdown and MDX frontmatter without starting Astro:
+Use `createCards(items, mapper, options)` for typed catalogs, pagination, tag archives, CMS records,
+or any other source that is not pathname-oriented. One logical card can produce several formats and
+format-specific aliases:
 
 ```js
-import { collectAstroContentCards } from '@santi020k/og/astro'
+import { createCards } from '@santi020k/og'
+
+const cards = createCards(products, product => ({
+  title: product.name,
+  description: product.summary,
+  variant: 'product',
+}), {
+  output: product => `products/${product.slug}.webp`,
+  formats: ['png', 'svg'],
+  formatAliases: product => ({ png: [`social/${product.slug}.png`] }),
+  sources: product => product.image ? [product.image] : [],
+})
+```
+
+This produces WebP, PNG, and SVG without consumer-side `flatMap` expansion. Each format is rendered
+once; its aliases reuse the rendered bytes.
+
+## Page metadata from the same source
+
+Keep page copy, the public image location, and the generated card together without mixing SEO data
+with renderer-only fields:
+
+```js
+import { definePresetConfig } from '@santi020k/og/presets'
+import { createPageCard, definePageMetadata } from '@santi020k/og/metadata'
+
+export const page = definePageMetadata({
+  pathname: '/docs',
+  title: 'Documentation',
+  description: 'Learn how to generate deterministic social images.',
+  image: {
+    output: 'pages/docs.webp',
+    alt: 'Example documentation social card',
+    width: 1200,
+    height: 630,
+  },
+})
+
+export default definePresetConfig({
+  outputDirectory: 'public/og',
+  cards: [createPageCard(page, {
+    data: page => ({ ...page, badge: 'Guide', variant: 'docs' }),
+  })],
+  preset: { brand: { name: 'Example' } },
+})
+```
+
+`createMetaTags` returns stable, framework-neutral descriptors. `renderMetaTags` safely turns those
+descriptors into HTML for static templates, server renderers, Astro, Eleventy, or any other system
+that accepts head markup:
+
+```js
+import { createMetaTags } from '@santi020k/og/metadata'
+import { renderMetaTags } from '@santi020k/og/metadata/html'
+import { page } from './page.js'
+
+const tags = createMetaTags(page, {
+  siteUrl: 'https://example.com',
+  siteName: 'Example',
+  publicImagePath: '/og',
+  titleTemplate: '%s — Example',
+  twitter: { site: '@example' },
+})
+
+const headHtml = renderMetaTags(tags)
+```
+
+The result includes the title, description, canonical URL, robots directives, Open Graph image
+dimensions, type and alternative text, locale fields, and X card fields. Article definitions can
+also include publication and modification dates, authors, section, and tags. URLs are resolved to
+absolute HTTP(S) URLs, fragments are removed from canonical URLs, output image MIME types are
+inferred, and invalid dimensions or empty required text fail early.
+
+For the Next.js App Router, use the small structural adapter. It does not import Next.js or add it as
+a dependency:
+
+```js
+import { toNextMetadata } from '@santi020k/og/metadata/next'
+import { page } from '../../page.js'
+
+export const metadata = toNextMetadata(page, {
+  siteUrl: 'https://example.com',
+  siteName: 'Example',
+  publicImagePath: '/og',
+})
+```
+
+Run `santi-og generate` before `next build` so every referenced static image already exists. In
+Astro, pass `renderMetaTags(createMetaTags(page, site))` to a head component with `set:html`. Other
+frameworks can consume the descriptors directly instead of parsing HTML.
+
+## Framework-neutral Markdown and MDX content
+
+The optional content entry point reads Markdown and MDX frontmatter without starting a framework:
+
+```js
+import { collectContentCards } from '@santi020k/og/content'
 import { definePresetConfig } from '@santi020k/og/presets'
 
 export default definePresetConfig({
-  cards: () => collectAstroContentCards({
+  cards: () => collectContentCards({
     directory: 'src/content/blog',
     basePath: 'blog',
   }),
@@ -99,7 +198,14 @@ export default definePresetConfig({
 ```
 
 Draft entries are excluded by default. Use `map`, `output`, and `sources` callbacks for custom
-frontmatter schemas, output conventions, and cover images.
+frontmatter schemas, output conventions, and cover images. Use `include`, `exclude`, `filter`,
+`draft`, `coverFields`, and `aggregate` for project-specific collections. Existing Astro consumers
+can keep using `collectAstroContentCards` and `readAstroContent` from `@santi020k/og/astro`; those
+names are compatibility aliases for the same framework-neutral implementation.
+
+`include` and `exclude` run before files are parsed. `filter` and `draft` operate on parsed entries,
+`coverFields` defines image-field preference, and `aggregate(entries, cards)` can append tag,
+locale, pagination, or collection-level cards.
 
 ## Custom renderer configuration
 
@@ -131,8 +237,9 @@ export default defineConfig({
 })
 ```
 
-Card `data` can have any serializable shape. Each card may also declare `sources`, `width`, and
-`height`. The output extension selects SVG, PNG, WebP, JPEG, or AVIF encoding.
+Card `data` can have any serializable shape. Each card may also declare `sources`, `width`,
+`height`, `formats`, and `formatAliases`. The output extension selects the primary SVG, PNG, WebP,
+JPEG, or AVIF encoding.
 
 Source collections accept literal paths, glob patterns, or an async callback. Relative paths resolve
 from `root`; absolute paths are supported and remain outside the output traversal boundary:
@@ -163,9 +270,10 @@ const output = relativeOutput('public/og', '/project/public/og/pages/home.webp')
 
 ## Aliases, named directories, and static assets
 
-One card can write the same rendered bytes to aliases and named output directories. Aliases must
-use the primary output format and never invoke the renderer again. Use `assets` for pass-through
-files referenced by generated SVG or published beside the cards:
+One logical card can publish several encodings with `formats`. Same-format `aliases` reuse the
+primary bytes, while `formatAliases` publish extra names for a specific encoding. Named output
+directories work with every destination. Use `assets` for pass-through files referenced by
+generated SVG or published beside the cards:
 
 ```js
 export default defineConfig({
@@ -175,8 +283,10 @@ export default defineConfig({
     store: 'apps/store/public',
   },
   cards: [{
-    output: 'og.png',
-    aliases: ['og-image.png', { directory: 'docs', output: 'social/home.png' }],
+    output: 'og.webp',
+    formats: ['png', 'svg'],
+    aliases: ['og-image.webp', { directory: 'docs', output: 'social/home.webp' }],
+    formatAliases: { png: ['share.png'] },
     data: home,
   }],
   assets: [{
@@ -246,14 +356,17 @@ renderer: createSatoriWorkerRenderer({
 ## Cache and cleanup guarantees
 
 The default `.og-cache.json` fingerprint includes each card's data, dimensions, destinations, config
-contents, and declared source-file contents. Worker entry modules, their statically imported local
-modules, and literal `readFile(...)` or `new URL(...)` assets are discovered transitively. Dynamic
-paths should still be declared with `cache.sources` or per-card `sources`.
+contents, declared source-file contents, the generating library version, and an optional semantic
+`cache.key`. Preset configs also record their preset version. Worker entry modules, their statically
+imported local modules, and literal `readFile(...)` or `new URL(...)` assets are discovered
+transitively. Dynamic paths should still be declared with `cache.sources` or per-card `sources`.
 
 Each manifest entry also stores the generated file's SHA-256 digest. `generate` and `check` therefore
 detect missing, manually edited, or corrupted output bytes even when all inputs are unchanged. A
-version 1 manifest is read safely and upgraded by regenerating entries without output digests. If
-generated images are committed and checked in CI, commit the manifest alongside them.
+legacy manifest is read safely and upgraded by regeneration. If generated images are committed,
+commit `.og-cache.json` alongside them so CI can verify integrity and tracked cleanup can identify
+obsolete files. If generated images are build artifacts, ignore both the images and manifest and
+generate them in CI. Do not commit outputs while ignoring their manifest.
 
 `clean: true` removes only obsolete outputs recorded in the previous manifest. It never scans and
 deletes arbitrary files from the output directory. Output paths and the manifest are constrained to
@@ -261,9 +374,43 @@ the project root, preventing accidental traversal.
 
 Use `santi-og check` in CI to fail when an output is missing or stale without changing files.
 
-Use `santi-og compare` during migrations. It renders into a temporary directory and reports the
-format, dimensions, byte size, and decoded pixel difference against each existing output without
-replacing committed files.
+Use `santi-og compare --threshold 0.01` during migrations. It renders into a temporary directory,
+reports the format, dimensions, byte size, and decoded pixel difference against each existing
+output, and fails when a card exceeds the accepted difference. Add `--json` for automation.
+
+`santi-og migrate --report` inventories logical cards, physical outputs, local renderer modules,
+and remaining custom-renderer responsibilities. `santi-og upgrade --to 0.4.0` updates regular
+dependencies or pnpm catalogs and release-age exclusions; run your package manager install command
+after reviewing the changes. `generate`, `check`, `compare`, `migrate`, and `upgrade` support
+machine-readable JSON summaries.
+
+## Deterministic typography
+
+Presets bundle Inter Variable, measure real glyph advances, split long tokens safely, and embed the
+font in generated SVG. This keeps wrapping portable across build machines, including emoji and
+mixed-width text. To use your own font, provide a local WOFF/WOFF2/TTF file; it is automatically
+tracked as a cache source:
+
+```js
+preset: {
+  typography: { file: 'public/fonts/Brand.woff2', family: 'Brand' },
+}
+```
+
+## Hybrid preset and custom media
+
+A project can use presets for social cards while retaining an independent custom renderer for
+videos, diagrams, or other media. Keep them as separate configs or scripts so each pipeline owns
+only its outputs:
+
+```json
+{
+  "scripts": {
+    "generate:og": "santi-og generate --config og.config.mjs",
+    "generate:media": "node scripts/generate-launch-video.mjs"
+  }
+}
+```
 
 The CLI discovers root configs, `scripts/og.config.mjs`, and `scripts/generate-og-images.mjs`. A
 package can also point to any config without repeating `--config` in every script:
@@ -282,6 +429,7 @@ ContracTrack, Cult, PostLens, and workspace-organizer.
 
 ## Philosophy
 
-The package owns generation mechanics. The consuming project owns its brand, content discovery,
-fonts, assets, and visual composition. Shared brand presets can depend on `@santi020k/og`, but the
-core package does not depend on a design system or theme.
+The package owns generation and portable metadata mechanics. The consuming project owns its brand,
+content mapping, fonts, assets, visual composition, and framework rendering. Shared brand presets
+can depend on `@santi020k/og`, but the core package does not depend on a design system, theme, or web
+framework.

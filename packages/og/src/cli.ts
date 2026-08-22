@@ -7,9 +7,12 @@ import { parseArgs } from 'node:util'
 
 import { compare } from './compare.js'
 import { generate } from './generate.js'
+import { createMigrationReport } from './report.js'
 import type { OgConfig } from './types.js'
+import { upgradeProject } from './upgrade.js'
+import { GENERATOR_VERSION } from './version.js'
 
-const VERSION = '0.3.0'
+const VERSION = GENERATOR_VERSION
 
 const CONFIG_NAMES = [
   'og.config.mjs',
@@ -31,6 +34,8 @@ Usage:
   santi-og check [options]
   santi-og compare [options]
   santi-og init [options]
+  santi-og migrate --report [options]
+  santi-og upgrade [options]
 
 Options:
   --config <path>       Config file or package directory (default: discover config)
@@ -38,6 +43,11 @@ Options:
   --force               Regenerate every card
   --clean               Remove outputs for cards deleted from the config
   --silent              Hide per-file progress
+  --json                Print a machine-readable JSON result
+  --threshold <ratio>   Maximum changed-pixel ratio accepted by compare
+  --report              Analyze a config without changing consumer code
+  --root <path>         Project root for upgrade (default: current directory)
+  --to <version>        Upgrade target (default: this CLI version)
   --help                Show this help
   --version             Show the version
 `
@@ -161,7 +171,9 @@ interface GenerationCommandOptions {
   concurrency: string | undefined
   config: string | undefined
   force: boolean | undefined
+  json: boolean
   silent: boolean
+  threshold: string | undefined
 }
 
 const initialize = async (requestedConfig: string | undefined): Promise<void> => {
@@ -197,10 +209,26 @@ const executeGeneration = async (
   const concurrency = parseConcurrency(commandOptions.concurrency)
 
   if (command === 'compare') {
+    const threshold = commandOptions.threshold === undefined ? undefined : Number(commandOptions.threshold)
+
+    if (threshold !== undefined && (!Number.isFinite(threshold) || threshold < 0 || threshold > 1)) {
+      throw new Error('--threshold must be a ratio between 0 and 1.')
+    }
+
     const comparisons = await compare(config, {
       configFingerprint: configContents,
       ...(concurrency === undefined ? {} : { concurrency })
     })
+
+    if (commandOptions.json) {
+      process.stdout.write(`${JSON.stringify({ command, comparisons, version: VERSION }, null, 2)}\n`)
+
+      if (threshold !== undefined && comparisons.some(comparison => (
+        comparison.pixelDifference?.ratio !== undefined && comparison.pixelDifference.ratio > threshold
+      ))) process.exitCode = 1
+
+      return
+    }
 
     for (const comparison of comparisons) {
       const actual = `${comparison.actual.width ?? '?'}x${comparison.actual.height ?? '?'} ${comparison.actual.format ?? 'unknown'} ${comparison.actual.bytes} B`
@@ -213,6 +241,10 @@ const executeGeneration = async (
       process.stdout.write(`  ${comparison.status.padEnd(9)} ${comparison.output}: ${actual}${expected}${pixels}\n`)
     }
 
+    if (threshold !== undefined && comparisons.some(comparison => (
+      comparison.pixelDifference?.ratio !== undefined && comparison.pixelDifference.ratio > threshold
+    ))) process.exitCode = 1
+
     return
   }
 
@@ -221,7 +253,7 @@ const executeGeneration = async (
     configFingerprint: configContents,
     ...(concurrency === undefined ? {} : { concurrency }),
     ...(commandOptions.force === undefined ? {} : { force: commandOptions.force }),
-    ...(commandOptions.silent ?
+    ...(commandOptions.silent || commandOptions.json ?
       {} :
       {
         onEvent: event => {
@@ -231,14 +263,66 @@ const executeGeneration = async (
   })
 
   if (command === 'check') {
+    if (commandOptions.json) {
+      process.stdout.write(`${JSON.stringify({ command, config: configPath, ...result }, null, 2)}\n`)
+
+      if (result.stale.length > 0) process.exitCode = 1
+
+      return
+    }
+
     reportCheck(result.stale, result.total)
 
     return
   }
 
-  process.stdout.write(
-    `Generated ${result.generated.length}, skipped ${result.skipped.length}, cleaned ${result.cleaned.length}.\n`
-  )
+  if (commandOptions.json) {
+    process.stdout.write(`${JSON.stringify({ command, config: configPath, ...result }, null, 2)}\n`)
+  } else {
+    process.stdout.write(
+      `Generated ${result.generated.length}, skipped ${result.skipped.length}, cleaned ${result.cleaned.length} ` +
+      `in ${Math.round(result.elapsedMilliseconds)}ms (generator ${result.version}${result.cacheKey ? `, ${result.cacheKey}` : ''}).\n`
+    )
+  }
+}
+
+const executeMigrationReport = async (requestedConfig: string | undefined, json: boolean): Promise<void> => {
+  const configPath = await findConfig(requestedConfig)
+  const configContents = await readFile(configPath, 'utf8')
+  const config = await loadConfig(configPath)
+  const report = await createMigrationReport({ config, configContents, configPath })
+
+  if (json) {
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
+
+    return
+  }
+
+  process.stdout.write(`Migration report for ${path.relative(process.cwd(), report.config)}\n`)
+
+  process.stdout.write(`  ${report.logicalCards} logical card(s), ${report.physicalOutputs} physical output(s)\n`)
+
+  const renderer = report.customRenderer ? 'custom renderer' : report.cacheKey ?? 'preset renderer'
+
+  process.stdout.write(`  ${report.configLines} config line(s), ${renderer}\n`)
+
+  report.recommendations.forEach(recommendation => process.stdout.write(`  - ${recommendation}\n`))
+}
+
+const executeUpgrade = async (root: string | undefined, version: string | undefined, json: boolean): Promise<void> => {
+  const result = await upgradeProject({ ...(root ? { root } : {}), version: version ?? VERSION })
+
+  if (json) {
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+
+    return
+  }
+
+  process.stdout.write(`Updated @santi020k/og to ${result.version} for ${result.packageManager}.\n`)
+
+  result.changes.forEach(change => process.stdout.write(`  ${change.file}: ${change.from} -> ${change.to}\n`))
+
+  process.stdout.write(`Run ${result.packageManager} install to refresh the lockfile.\n`)
 }
 
 const run = async (): Promise<void> => {
@@ -250,7 +334,12 @@ const run = async (): Promise<void> => {
       config: { short: 'c', type: 'string' },
       force: { short: 'f', type: 'boolean' },
       help: { short: 'h', type: 'boolean' },
+      json: { type: 'boolean' },
+      report: { type: 'boolean' },
+      root: { type: 'string' },
       silent: { short: 's', type: 'boolean' },
+      threshold: { type: 'string' },
+      to: { type: 'string' },
       version: { short: 'v', type: 'boolean' }
     },
     strict: true
@@ -270,7 +359,7 @@ const run = async (): Promise<void> => {
 
   const command = parsed.positionals[0] ?? 'generate'
 
-  if (!['check', 'compare', 'generate', 'init'].includes(command)) {
+  if (!['check', 'compare', 'generate', 'init', 'migrate', 'upgrade'].includes(command)) {
     throw new Error(`Unknown command: ${command}`)
   }
 
@@ -280,12 +369,28 @@ const run = async (): Promise<void> => {
     return
   }
 
+  if (command === 'migrate') {
+    if (!parsed.values.report) throw new Error('The migrate command currently requires --report.')
+
+    await executeMigrationReport(parsed.values.config, parsed.values.json ?? false)
+
+    return
+  }
+
+  if (command === 'upgrade') {
+    await executeUpgrade(parsed.values.root, parsed.values.to, parsed.values.json ?? false)
+
+    return
+  }
+
   await executeGeneration(command, {
     clean: parsed.values.clean ?? false,
     concurrency: parsed.values.concurrency ?? process.env.OG_WORKER_THREADS,
     config: parsed.values.config,
     force: parsed.values.force ?? process.env.FORCE_OG === '1',
-    silent: parsed.values.silent ?? false
+    json: parsed.values.json ?? false,
+    silent: parsed.values.silent ?? false,
+    threshold: parsed.values.threshold
   })
 }
 
