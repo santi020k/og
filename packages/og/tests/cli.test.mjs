@@ -33,7 +33,7 @@ test('init creates a complete starter config', async () => {
 
     assert.match(result.stdout, /Created og\.config\.mjs/)
 
-    assert.match(await readFile(path.join(root, 'og.config.mjs'), 'utf8'), /createSharpRenderer/)
+    assert.match(await readFile(path.join(root, 'og.config.mjs'), 'utf8'), /definePresetConfig/)
   } finally {
     await rm(root, { force: true, recursive: true })
   }

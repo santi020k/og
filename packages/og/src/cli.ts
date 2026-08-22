@@ -9,7 +9,7 @@ import { compare } from './compare.js'
 import { generate } from './generate.js'
 import type { OgConfig } from './types.js'
 
-const VERSION = '0.2.1'
+const VERSION = '0.3.0'
 
 const CONFIG_NAMES = [
   'og.config.mjs',
@@ -134,14 +134,7 @@ const parseConcurrency = (value: string | undefined): number | 'auto' | undefine
 }
 
 const initialConfig = `\
-import { defineConfig } from '@santi020k/og'
-import { createSharpRenderer } from '@santi020k/og/sharp'
-
-const escapeXml = value => value
-  .replaceAll('&', '&amp;')
-  .replaceAll('<', '&lt;')
-  .replaceAll('>', '&gt;')
-  .replaceAll('"', '&quot;')
+import { definePresetConfig } from '@santi020k/og/presets'
 
 const cards = [
   {
@@ -153,18 +146,13 @@ const cards = [
   },
 ]
 
-export default defineConfig({
+export default definePresetConfig({
   cards,
   clean: true,
-  renderer: createSharpRenderer({
-    renderSvg: ({ description, title }, { height, width }) => \`\
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \${width} \${height}">
-  <rect width="100%" height="100%" fill="#111827"/>
-  <text x="72" y="260" fill="#ffffff" font-family="Arial, sans-serif" font-size="72" font-weight="700">\${escapeXml(title)}</text>
-  <text x="76" y="330" fill="#cbd5e1" font-family="Arial, sans-serif" font-size="30">\${escapeXml(description)}</text>
-</svg>\`,
-    webp: { quality: 86 },
-  }),
+  preset: {
+    brand: { domain: 'example.com', name: 'My project' },
+    variant: 'product',
+  },
 })
 `
 

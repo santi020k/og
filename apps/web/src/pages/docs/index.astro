@@ -1,57 +1,87 @@
 ---
+import { CodeTabs } from '@santi020k/lumen-astro'
+
+import PresetGallery from '../../components/PresetGallery.astro'
 import SiteFooter from '../../components/SiteFooter.astro'
 import SiteHeader from '../../components/SiteHeader.astro'
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
-const description = 'Install, configure, and run @santi020k/og with Sharp, Satori, worker threads, deterministic caching, and safe cleanup.'
+const description = 'Use @santi020k/og v0.3 presets, Astro content helpers, custom Sharp or Satori renderers, deterministic caching, and safe output management.'
 
 const sections = [
   ['quick-start', 'Quick start'],
-  ['configuration', 'Configuration'],
-  ['sharp', 'Sharp renderer'],
-  ['satori', 'Satori renderer'],
-  ['workers', 'Large collections'],
+  ['presets', 'Visual presets'],
+  ['astro-content', 'Astro content'],
+  ['route-cards', 'Route cards'],
+  ['custom-renderers', 'Custom renderers'],
+  ['outputs', 'Outputs and aliases'],
   ['cache-and-cleanup', 'Cache and cleanup'],
-  ['ci', 'CI checks'],
   ['cli', 'CLI reference'],
-  ['config-reference', 'Config reference'],
+  ['config-reference', 'Config reference']
 ] as const
 
-const quickStart = `pnpm add -D @santi020k/og
-pnpm exec santi-og init
-pnpm exec santi-og generate`
+const installItems = [
+  { code: 'pnpm add -D @santi020k/og', label: 'pnpm', language: 'bash', value: 'pnpm' },
+  { code: 'npm install -D @santi020k/og', label: 'npm', language: 'bash', value: 'npm' },
+  { code: 'yarn add -D @santi020k/og', label: 'Yarn', language: 'bash', value: 'yarn' }
+]
 
-const packageScripts = `{
-  "scripts": {
-    "generate:og": "santi-og generate",
-    "generate:og:force": "santi-og generate --force",
-    "check:og": "santi-og check",
-    "compare:og": "santi-og compare"
-  }
-}`
+const presetExample = `import { createPathCards } from '@santi020k/og'
+import { definePresetConfig } from '@santi020k/og/presets'
 
-const configuration = `import { defineConfig } from '@santi020k/og'
+export default definePresetConfig({
+  outputDirectory: 'public/og/pages',
+  cards: createPathCards([
+    {
+      pathname: '/',
+      data: {
+        title: 'Ship the card. Delete the renderer.',
+        description: 'A complete social image from a small config.',
+        badge: 'Product',
+        variant: 'product',
+      },
+    },
+  ]),
+  preset: {
+    brand: {
+      name: 'Example',
+      domain: 'example.com',
+      logo: 'public/logo.png',
+    },
+    theme: { accent: '#7c3aed' },
+  },
+})`
+
+const astroExample = `import { collectAstroContentCards } from '@santi020k/og/astro'
+import { definePresetConfig } from '@santi020k/og/presets'
+
+export default definePresetConfig({
+  outputDirectory: 'public/og',
+  cards: () => collectAstroContentCards({
+    directory: 'src/content/blog',
+    basePath: 'blog',
+    map: entry => ({
+      title: String(entry.frontmatter.title),
+      description: String(entry.frontmatter.description ?? ''),
+      image: String(entry.frontmatter.cover ?? ''),
+      variant: 'article',
+    }),
+    sources: entry => [
+      entry.filePath,
+      String(entry.frontmatter.cover ?? ''),
+    ],
+  }),
+  preset: {
+    brand: { name: 'Example Journal' },
+    variant: 'article',
+  },
+})`
+
+const customExample = `import { defineConfig } from '@santi020k/og'
 import { createSharpRenderer } from '@santi020k/og/sharp'
 
 export default defineConfig({
-  outputDirectory: 'public/og/pages',
-  clean: true,
-  cache: {
-    sources: [
-      'scripts/render-og-card.mjs',
-      'public/fonts/Inter-Bold.ttf',
-      'public/logo.svg',
-    ],
-  },
-  cards: async () => [
-    {
-      output: 'index.webp',
-      data: {
-        title: 'Home',
-        description: 'Welcome to the project.',
-      },
-    },
-  ],
+  cards: [{ output: 'index.webp', data: { title: 'Home' } }],
   renderer: createSharpRenderer({
     renderSvg: ({ title }, { height, width }) =>
       \`<svg viewBox="0 0 \${width} \${height}">...</svg>\`,
@@ -59,19 +89,21 @@ export default defineConfig({
   }),
 })`
 
-const sharpExample = `import { createSharpRenderer } from '@santi020k/og/sharp'
+const startingPointItems = [
+  { code: presetExample, label: 'Preset', language: 'javascript', value: 'preset' },
+  { code: astroExample, label: 'Astro content', language: 'javascript', value: 'astro' },
+  { code: customExample, label: 'Custom renderer', language: 'javascript', value: 'custom' }
+]
 
-const renderer = createSharpRenderer({
-  renderSvg: (data, { height, width }) =>
-    \`<svg xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 \${width} \${height}">
-      <rect width="100%" height="100%" fill="#07110e" />
-      <text x="72" y="315" fill="#eafff6" font-size="72">
-        \${data.title}
-      </text>
-    </svg>\`,
-  webp: { quality: 86 },
-  png: { compressionLevel: 9 },
+const pathExample = `import { createPathCards, pathnameOutput } from '@santi020k/og'
+
+pathnameOutput('/')                       // index.webp
+pathnameOutput('/docs/api')               // docs--api.webp
+pathnameOutput('/guides/getting started') // guides--getting~20started.webp
+
+const cards = createPathCards(pages, {
+  directory: 'routes',
+  extension: 'png',
 })`
 
 const satoriExample = `import { readFile } from 'node:fs/promises'
@@ -83,30 +115,42 @@ const regular = await readFile('public/fonts/Inter-Regular.ttf')
 export default defineConfig({
   cards: [{ output: 'index.webp', data: { title: 'Hello' } }],
   renderer: createSatoriRenderer({
-    satori: {
-      fonts: [{ data: regular, name: 'Inter', weight: 400 }],
-    },
-    template: ({ title }) =>
-      html\`<div style="display:flex">\${title}</div>\`,
-    sharp: { webp: { quality: 86 } },
+    satori: { fonts: [{ data: regular, name: 'Inter', weight: 400 }] },
+    template: ({ title }) => html\`<div style="display:flex">\${title}</div>\`,
   }),
 })`
 
-const workerExample = `import { defineConfig, defineWorkerRenderer } from '@santi020k/og'
+const rendererItems = [
+  { code: customExample, label: 'Sharp + SVG', language: 'javascript', value: 'sharp' },
+  { code: satoriExample, label: 'Satori', language: 'javascript', value: 'satori' }
+]
 
-export default defineConfig({
-  cards: collectCards,
-  concurrency: { mode: 'auto', max: 16 },
-  renderer: defineWorkerRenderer({
-    module: new URL('./scripts/render-og-card.mjs', import.meta.url),
-  }),
+const outputExample = `export default defineConfig({
+  outputDirectory: 'public/og',
+  outputDirectories: {
+    docs: 'apps/docs/public',
+    store: 'apps/store/public',
+  },
+  cards: [{
+    output: 'home.png',
+    aliases: [
+      'og.png',
+      { directory: 'docs', output: 'social/home.png' },
+    ],
+    data: home,
+  }],
+  assets: [{
+    source: 'assets/app-icon.png',
+    directory: 'store',
+    output: 'app-icon.png',
+  }],
+  renderer,
 })`
 
-const ciExample = `- name: Generate Open Graph images
-  run: pnpm run generate:og
-
-- name: Verify committed images
-  run: pnpm run check:og`
+const cliExample = `pnpm exec santi-og init
+pnpm exec santi-og generate
+pnpm exec santi-og check
+pnpm exec santi-og compare`
 ---
 
 <BaseLayout title="Documentation" description={description}>
@@ -118,14 +162,14 @@ const ciExample = `- name: Generate Open Graph images
       <div class="docs-hero-grid">
         <div>
           <span class="kicker">Documentation</span>
-          <h1>Build social cards<br /><em>on your terms.</em></h1>
+          <h1>See the output.<br /><em>Then copy the code.</em></h1>
         </div>
-        <p>{description} Your content and visual system stay inside your project.</p>
+        <p>{description} Start with a useful visual default and customize only what your project needs.</p>
       </div>
       <div class="docs-meta">
-        <span><b>v0.1.0</b> Current release</span>
+        <span><b>v0.3.0</b> Current docs</span>
         <span><b>Node.js 22.18+</b> Runtime</span>
-        <span><b>TypeScript</b> First-class types</span>
+        <span><b>4 presets</b> Included</span>
       </div>
     </section>
 
@@ -140,77 +184,93 @@ const ciExample = `- name: Generate Open Graph images
 
       <article class="docs-content">
         <section class="docs-intro">
-          <p class="docs-lead">@santi020k/og is a renderer-agnostic build tool for deterministic Open Graph images. Supply card data and a renderer; the package handles paths, encoding, caching, concurrency, cleanup, and verification.</p>
-          <div class="docs-callout">
-            <span>Core idea</span>
-            <p>The generator owns the repetitive pipeline. Your application keeps ownership of its brand, content discovery, fonts, assets, and card composition.</p>
+          <p class="docs-lead">Use a complete preset for conventional social cards, connect Astro Markdown or MDX directly, or keep full visual control with a custom renderer.</p>
+          <div class="choice-grid">
+            <article><span>Fastest</span><h3>Preset config</h3><p>Brand, theme, route data, and optional images. No renderer file.</p></article>
+            <article><span>Content sites</span><h3>Astro helper</h3><p>Frontmatter discovery, nested slugs, draft filtering, and source tracking.</p></article>
+            <article><span>Full control</span><h3>Custom renderer</h3><p>Sharp, Satori, workers, or an existing encoded image function.</p></article>
           </div>
         </section>
 
         <section id="quick-start">
           <span class="docs-section-number">01</span>
           <h2>Quick start</h2>
-          <p>Install the package, generate a complete starter configuration, then render your first card.</p>
-          <div class="code-window">
-            <div class="code-title"><span></span><span></span><span></span><b>Terminal</b></div>
-            <pre><code>{quickStart}</code></pre>
-          </div>
-          <p>The generated <code>og.config.mjs</code> is a working SVG-to-WebP example. Replace its card data and SVG with your project’s content and design.</p>
-          <h3>Add stable scripts</h3>
-          <p>Package scripts keep local development and CI using the same commands.</p>
-          <pre><code>{packageScripts}</code></pre>
+          <p>Install the package with your preferred package manager, initialize a preset config, and generate the first image.</p>
+          <CodeTabs
+            ariaLabel="Install @santi020k/og"
+            items={installItems}
+            storageKey="og-package-manager"
+            theme="santi020k"
+            wrap={false}
+          />
+          <pre><code>{cliExample}</code></pre>
+          <p><code>santi-og init</code> now creates a preset-based configuration. It works immediately; writing SVG is optional.</p>
+          <h3>Choose your starting point</h3>
+          <CodeTabs
+            ariaLabel="Open Graph configuration approaches"
+            items={startingPointItems}
+            initialValue="preset"
+            theme="santi020k"
+            wrap={false}
+          />
         </section>
 
-        <section id="configuration">
+        <section id="presets">
           <span class="docs-section-number">02</span>
-          <h2>Configuration</h2>
-          <p>Create <code>og.config.mjs</code>, <code>og.config.js</code>, or <code>og.config.ts</code> in your project root. The config can contain a static card array or collect cards asynchronously from Markdown, a CMS, or any other source.</p>
-          <pre><code>{configuration}</code></pre>
-          <p>Card <code>data</code> accepts any serializable shape. Each card can override its dimensions, declare source paths, globs, or callbacks, and list same-format output aliases. Relative and absolute source paths are supported. The output extension selects SVG, PNG, WebP, JPEG, or AVIF encoding.</p>
+          <h2>Visual presets</h2>
+          <p>Every preset shares the same accessible title, description, badge, brand, logo, domain, accent, and image data contract. A config-level variant is the default; any card can override it.</p>
+          <PresetGallery />
+          <div class="docs-note"><strong>Actual package output.</strong><p>These four images are rendered by this site’s <code>og.config.mjs</code> during every build.</p></div>
+          <h3>Theme and card overrides</h3>
+          <p>Set <code>preset.brand</code>, <code>preset.theme</code>, and <code>preset.variant</code> once. Override <code>accent</code>, <code>brand</code>, <code>domain</code>, <code>image</code>, or <code>variant</code> on individual cards.</p>
         </section>
 
-        <section id="sharp">
+        <section id="astro-content">
           <span class="docs-section-number">03</span>
-          <h2>Sharp renderer</h2>
-          <p>Use the Sharp adapter when your design is expressed as SVG. Return an SVG string and the adapter handles the requested output encoding.</p>
-          <pre><code>{sharpExample}</code></pre>
-          <div class="docs-note"><strong>Keep dynamic SVG safe.</strong><p>Escape user- or CMS-authored text before inserting it into XML.</p></div>
+          <h2>Astro Markdown and MDX</h2>
+          <p><code>collectAstroContentCards</code> reads YAML frontmatter without starting Astro. It understands nested <code>index.md</code> routes, excludes drafts by default, and tracks each content file as a source.</p>
+          <pre><code>{astroExample}</code></pre>
+          <p>Use <code>map</code> for custom schemas, <code>output</code> for a project-specific filename convention, and <code>sources</code> for covers or other local assets.</p>
         </section>
 
-        <section id="satori">
+        <section id="route-cards">
           <span class="docs-section-number">04</span>
-          <h2>Satori renderer</h2>
-          <p>The Satori entry point includes Satori, Resvg-compatible SVG output, Sharp encoding, and the <code>satori-html</code> template helper.</p>
-          <pre><code>{satoriExample}</code></pre>
-          <p>Fonts are explicit so output remains portable and deterministic across developer machines and CI.</p>
+          <h2>Route-oriented cards</h2>
+          <p><code>pathnameOutput</code> and <code>createPathCards</code> remove repeated slug and output mapping from route-heavy sites. URL segments are encoded into portable, deterministic filenames.</p>
+          <pre><code>{pathExample}</code></pre>
         </section>
 
-        <section id="workers">
+        <section id="custom-renderers">
           <span class="docs-section-number">05</span>
-          <h2>Large collections</h2>
-          <p>For hundreds of cards, export a renderer from a separate module and let the CLI create a bounded worker pool.</p>
-          <pre><code>{workerExample}</code></pre>
-          <p>The renderer module default-exports the same <code>(data, context) =&gt; output</code> function used by a regular config. Worker card data must support structured cloning. Use <code>'auto'</code>, a detected concurrency capped with <code>{`{ mode: 'auto', max: 16 }`}</code>, or a fixed integer.</p>
+          <h2>Custom renderers</h2>
+          <p>Use a custom renderer for bespoke editorial art, data visualization, or strict legacy parity. The generation pipeline stays the same.</p>
+          <CodeTabs
+            ariaLabel="Custom renderer examples"
+            items={rendererItems}
+            theme="santi020k"
+            wrap={false}
+          />
+          <p>Existing functions that already return PNG, WebP, JPEG, or AVIF bytes can use <code>createEncodedRenderer</code>. Large collections can use <code>defineWorkerRenderer</code> or <code>createSatoriWorkerRenderer</code> with bounded automatic concurrency.</p>
+        </section>
+
+        <section id="outputs">
+          <span class="docs-section-number">06</span>
+          <h2>Outputs, aliases, and assets</h2>
+          <p>Render once and write the same bytes to same-format aliases. Named directories support multi-app repositories, while tracked assets copy icons and supporting files safely.</p>
+          <pre><code>{outputExample}</code></pre>
+          <div class="docs-note"><strong>One card per format.</strong><p>An SVG and PNG need separate cards because the extension selects encoding. Same-format aliases do not render twice.</p></div>
         </section>
 
         <section id="cache-and-cleanup">
-          <span class="docs-section-number">06</span>
-          <h2>Cache and cleanup guarantees</h2>
-          <p>The default <code>.og-cache.json</code> fingerprint includes card data, dimensions, destinations, config contents, and declared source-file contents. Worker modules and their static local imports are included automatically. Every output also has a content digest, so checks detect manual edits and corruption.</p>
-          <div class="guarantee-grid">
-            <div><span>Fingerprint</span><strong>Content-aware</strong><p>Only cards affected by a content or source change are rebuilt.</p></div>
-            <div><span>Cleanup</span><strong>Tracked only</strong><p>Only obsolete files from the previous manifest may be removed.</p></div>
-            <div><span>Paths</span><strong>Root constrained</strong><p>Outputs and manifests cannot traverse outside the project root.</p></div>
-          </div>
-          <p>If generated images are committed, commit the manifest alongside them so a fresh checkout can verify every fingerprint.</p>
-        </section>
-
-        <section id="ci">
           <span class="docs-section-number">07</span>
-          <h2>CI checks</h2>
-          <p><code>santi-og check</code> exits with an error when an output is missing or stale, without writing or deleting files.</p>
-          <pre><code>{ciExample}</code></pre>
-          <p>Use <code>generate</code> when images are build artifacts. Use <code>check</code> when images and <code>.og-cache.json</code> are committed to the repository.</p>
+          <h2>Cache and cleanup guarantees</h2>
+          <p>Fingerprints include card data, dimensions, destinations, config contents, and declared source contents. Static local renderer imports and literal asset reads are discovered transitively.</p>
+          <div class="guarantee-grid">
+            <div><span>Fingerprint</span><strong>Content-aware</strong><p>Only cards affected by an input change are rebuilt.</p></div>
+            <div><span>Integrity</span><strong>Output digest</strong><p>Checks detect missing, edited, or corrupted generated bytes.</p></div>
+            <div><span>Cleanup</span><strong>Tracked only</strong><p>Only obsolete outputs recorded by the previous manifest are removed.</p></div>
+          </div>
+          <p>Output and manifest paths remain constrained to the project root. Use <code>santi-og check</code> in CI and <code>santi-og compare</code> for non-destructive migration reports.</p>
         </section>
 
         <section id="cli">
@@ -220,19 +280,17 @@ const ciExample = `- name: Generate Open Graph images
             <table>
               <thead><tr><th>Command or option</th><th>Purpose</th></tr></thead>
               <tbody>
-                <tr><td><code>init</code></td><td>Create a starter configuration.</td></tr>
-                <tr><td><code>generate</code></td><td>Render changed cards and optionally clean tracked outputs.</td></tr>
-                <tr><td><code>check</code></td><td>Report missing or stale cards without mutation.</td></tr>
+                <tr><td><code>init</code></td><td>Create a working preset configuration.</td></tr>
+                <tr><td><code>generate</code></td><td>Render changed cards and clean tracked obsolete output when enabled.</td></tr>
+                <tr><td><code>check</code></td><td>Report missing, changed, or stale cards without mutation.</td></tr>
                 <tr><td><code>compare</code></td><td>Report dimensions, format, size, and pixel differences without replacing files.</td></tr>
-                <tr><td><code>--config, -c</code></td><td>Use a specific configuration file or package directory.</td></tr>
+                <tr><td><code>--config, -c</code></td><td>Use a specific config file or package directory.</td></tr>
                 <tr><td><code>--concurrency</code></td><td>Set active renders to a positive number or <code>auto</code>.</td></tr>
                 <tr><td><code>--force, -f</code></td><td>Regenerate every card regardless of its fingerprint.</td></tr>
                 <tr><td><code>--clean</code></td><td>Remove obsolete outputs tracked by the manifest.</td></tr>
-                <tr><td><code>--silent, -s</code></td><td>Hide per-file progress.</td></tr>
               </tbody>
             </table>
           </div>
-          <p><code>FORCE_OG=1</code> behaves like <code>--force</code>, and <code>OG_WORKER_THREADS=&lt;number&gt;</code> behaves like <code>--concurrency</code>. Explicit flags take precedence.</p>
         </section>
 
         <section id="config-reference">
@@ -243,15 +301,15 @@ const ciExample = `- name: Generate Open Graph images
               <thead><tr><th>Property</th><th>Default</th><th>Description</th></tr></thead>
               <tbody>
                 <tr><td><code>cards</code></td><td>Required</td><td>Cards or an asynchronous card collector.</td></tr>
-                <tr><td><code>renderer</code></td><td>Required</td><td>A renderer function or worker descriptor.</td></tr>
-                <tr><td><code>assets</code></td><td><code>[]</code></td><td>Static files copied and tracked alongside rendered cards.</td></tr>
-                <tr><td><code>outputDirectory</code></td><td><code>public/og</code></td><td>Output directory relative to the project root.</td></tr>
-                <tr><td><code>outputDirectories</code></td><td><code>{`{}`}</code></td><td>Additional named output directories for multi-app repositories.</td></tr>
-                <tr><td><code>width</code></td><td><code>1200</code></td><td>Default image width; cards may override it.</td></tr>
-                <tr><td><code>height</code></td><td><code>630</code></td><td>Default image height; cards may override it.</td></tr>
+                <tr><td><code>preset</code></td><td>Neutral</td><td>Brand, theme, variant, and Sharp options for <code>definePresetConfig</code>.</td></tr>
+                <tr><td><code>renderer</code></td><td>Custom configs only</td><td>A function or worker descriptor used by <code>defineConfig</code>.</td></tr>
+                <tr><td><code>assets</code></td><td><code>[]</code></td><td>Static files copied and tracked alongside cards.</td></tr>
+                <tr><td><code>outputDirectory</code></td><td><code>public/og</code></td><td>Primary output directory relative to the project root.</td></tr>
+                <tr><td><code>outputDirectories</code></td><td><code>{`{}`}</code></td><td>Additional named output directories.</td></tr>
+                <tr><td><code>width</code> / <code>height</code></td><td><code>1200 × 630</code></td><td>Default dimensions; individual cards may override them.</td></tr>
                 <tr><td><code>cache</code></td><td>Enabled</td><td>Boolean or cache options with manifest and shared sources.</td></tr>
-                <tr><td><code>clean</code></td><td><code>false</code></td><td>Remove obsolete outputs previously tracked by the tool.</td></tr>
-                <tr><td><code>concurrency</code></td><td>Renderer-based</td><td>Maximum active renders, <code>auto</code>, or bounded automatic concurrency.</td></tr>
+                <tr><td><code>clean</code></td><td><code>false</code></td><td>Remove only obsolete outputs previously tracked by the tool.</td></tr>
+                <tr><td><code>concurrency</code></td><td>Renderer-based</td><td>Fixed, automatic, or bounded automatic active renders.</td></tr>
                 <tr><td><code>root</code></td><td>Config directory</td><td>Project root used to resolve and constrain paths.</td></tr>
               </tbody>
             </table>
@@ -259,9 +317,9 @@ const ciExample = `- name: Generate Open Graph images
         </section>
 
         <section class="docs-next">
-          <span class="kicker">Go further</span>
-          <h2>Already generating OG images?</h2>
-          <p>Move your existing setup to <code>@santi020k/og</code> without rebuilding your card designs.</p>
+          <span class="kicker">Migration guide</span>
+          <h2>Replace repeated renderers with v0.3 presets.</h2>
+          <p>The ten-project migration removed 2,273 lines of consumer Open Graph code while preserving route data and project-owned branding.</p>
           <a class="button" href="https://github.com/santi020k/og/blob/main/packages/og/docs/migrating-existing-projects.md">Read the migration guide <span>↗</span></a>
         </section>
       </article>

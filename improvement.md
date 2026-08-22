@@ -1,50 +1,54 @@
 # Improvements for the next version
 
-These findings came from migrating Lumen, commitprompt, Cult, PostLens, workspace-organizer,
-santi020k-theme, Astro Doctor, eslint-config-basic, santi020k.com, and ContracTrack to
-`@santi020k/og`.
+These findings come from migrating Lumen, commitprompt, Cult, PostLens, workspace-organizer,
+santi020k-theme, Astro Doctor, eslint-config-basic, santi020k.com, and ContracTrack.
 
-## Cache integrity
+## Completed in 0.2
 
-- Store and verify an output-content digest in the manifest. `santi-og check` currently verifies that
-  an output exists and that its input fingerprint is current, but it cannot detect a manually changed
-  or corrupted generated image.
-- Track transitive renderer imports automatically. Worker configs fingerprint the worker entry module,
-  but consumers must also list the renderer imported by that module, its fonts, and its static assets in
-  `cache.sources`.
-- Support glob patterns or a `sources()` callback for collections whose local cover images are discovered
-  dynamically. Per-card `sources` works, but migration code is repetitive.
+- Output-content digests, transitive renderer-source discovery, source globs, and source callbacks.
+- Encoded-renderer and legacy-card adapters.
+- Output aliases, named output directories, copied assets, and tracked-only cleanup.
+- Non-destructive image comparison and bounded automatic concurrency.
+- Package config discovery and the Satori worker renderer helper.
 
-## Migration ergonomics
+## Completed in 0.3
 
-- Add a renderer adapter for existing functions that already return encoded WebP or PNG buffers. Several
-  mature projects could reuse their renderer only through a custom function instead of
-  `createSharpRenderer` or `createSatoriRenderer`.
-- Add first-class output aliases so one rendered home card can be written as `og.png`, `og-image.png`, and
-  a route-specific name without rendering it repeatedly.
-- Support multiple named output directories. The theme-family repository writes cards into several
-  `apps/*/public` directories and currently has to set `outputDirectory: '.'` and place repository-relative
-  paths in every card.
-- Add a pass-through asset card or copy helper for assets referenced by generated SVG files. Product sites
-  commonly publish both SVG and raster cards alongside a shared app icon.
-- Let the CLI discover a config from a package-level conventional location or accept a package script
-  shorthand. Monorepo consumers currently repeat `--config scripts/generate-og-images.mjs` in every command.
+- Neutral `simple`, `article`, `docs`, and `product` card presets.
+- Configurable brand, domain, logo, image, palette, accent, and Sharp encoding options.
+- Shared title wrapping, escaping, layout, SVG composition, and raster encoding.
+- Deterministic URL-path output mapping with `pathnameOutput` and `createPathCards`.
+- Astro Markdown/MDX discovery with YAML frontmatter, nested index slugs, draft filtering, and custom
+  data, output, and source callbacks.
+- A preset-based CLI starter that is useful without writing a renderer.
 
-## Validation and performance
+## Findings for a future release
 
-- Add a migration comparison command that renders to a temporary directory and reports dimensions,
-  format, file size, and pixel differences without replacing committed images. Forced generation across
-  the migrated projects produced visually equivalent but byte-different binaries, creating noisy diffs.
-- Allow bounded automatic concurrency such as `{ mode: 'auto', max: 16 }`. Large Satori catalogs previously
-  capped their worker pools explicitly; using every reported CPU is not always appropriate in CI.
-- Report source and output paths in configuration errors. A missing font or cover currently surfaces as a
-  lower-level file read error, which is harder to associate with the card that declared it.
-- Document whether absolute paths are supported in `cache.sources` and per-card `sources`; migrations with
-  assets outside an app package need that behavior.
+### Preset typography and layout
 
-## Configuration composition
+- Bundle or explicitly configure a portable preset font. The current neutral renderer uses common
+  system font names, so exact glyph metrics can vary across operating systems even though output is
+  deterministic on the same build image.
+- Replace character-count wrapping with glyph-aware measurement for mixed-width scripts and very
+  long unbroken tokens. The current wrapper is intentionally small but can leave excess space or
+  overflow in unusual languages and code-heavy titles.
+- Add narrow extension points for preset decorations. Consumers currently choose a complete preset
+  or a complete custom renderer; a safe slot API could cover product screenshots and small diagrams
+  without bringing back full SVG templates.
 
-- Export small helpers for converting legacy `{ outFile, props }` specs into `OgCard` entries and for
-  deriving an output relative to `outputDirectory`. This mapping appeared in every Satori migration.
-- Consider an optional `createSatoriWorkerRenderer` helper that owns the worker entry module. The current
-  worker API is flexible, but every consumer still needs a one-line module that default-exports its renderer.
+### Content adapters
+
+- Add optional adapters for Astro's generated content metadata and non-file sources such as a CMS.
+  The v0.3 helper deliberately reads Markdown/MDX directly so it works without an Astro runtime, but
+  consumers with custom slug transforms still need a mapping callback.
+- Support explicit include/exclude patterns for mixed content directories. Draft filtering exists,
+  but a large collection may also want locale, schema, or directory filters before files are parsed.
+- Define remote-image download and cache semantics before supporting HTTP cover images. Local and
+  data-URL images are dependable today; silently relying on an SVG implementation to fetch remote
+  resources would make builds non-deterministic.
+
+### Migration reporting
+
+- Add a `santi-og migrate --report` command that measures removed consumer files and lines, lists
+  remaining custom renderer responsibilities, and flags renderer modules that became unreferenced.
+- Let comparison reports accept a visual-difference threshold per card. Preset migrations are
+  intentionally redesigns, while custom-renderer migrations often require pixel parity.
