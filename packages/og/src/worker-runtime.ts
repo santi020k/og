@@ -19,8 +19,19 @@ if (
   throw new TypeError('OG worker runtime received invalid initialization data.')
 }
 
+let factoryModule: string | undefined
+
+if ('factoryModule' in runtimeValue) {
+  if (typeof runtimeValue.factoryModule !== 'string') {
+    throw new TypeError('OG worker runtime received invalid initialization data.')
+  }
+
+  factoryModule = runtimeValue.factoryModule
+}
+
 const runtime: WorkerRuntimeData = {
   exportName: runtimeValue.exportName,
+  ...(factoryModule === undefined ? {} : { factoryModule }),
   module: runtimeValue.module
 }
 
@@ -31,8 +42,28 @@ if (typeof imported !== 'object' || imported === null) {
 }
 
 const namespace = imported as Record<string, unknown>
-const candidate = namespace[runtime.exportName]
+let candidate = namespace[runtime.exportName]
 const isRenderer = (value: unknown): value is OgRenderer => typeof value === 'function'
+
+const isRendererFactory = (value: unknown): value is ((options: unknown) => unknown) => (
+  typeof value === 'function'
+)
+
+if (runtime.factoryModule) {
+  const factoryNamespace = toUnknown(await import(pathToFileURL(runtime.factoryModule).href))
+
+  if (typeof factoryNamespace !== 'object' || factoryNamespace === null) {
+    throw new TypeError(`Worker renderer factory ${runtime.factoryModule} has no exports.`)
+  }
+
+  const factory = (factoryNamespace as Record<string, unknown>).default
+
+  if (!isRendererFactory(factory)) {
+    throw new TypeError(`Worker renderer factory ${runtime.factoryModule} must default-export a function.`)
+  }
+
+  candidate = factory(candidate)
+}
 
 if (!isRenderer(candidate)) {
   throw new TypeError(

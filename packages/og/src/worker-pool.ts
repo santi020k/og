@@ -27,6 +27,7 @@ export class OgWorkerPool {
 
     const workerData: WorkerRuntimeData = {
       exportName: renderer.exportName,
+      ...(renderer.factoryModule ? { factoryModule: renderer.factoryModule } : {}),
       module: renderer.module
     }
 

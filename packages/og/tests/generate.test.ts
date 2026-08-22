@@ -1,9 +1,11 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { compare } from '../src/compare.js'
+import { createEncodedRenderer, fromLegacyCards, relativeOutput } from '../src/composition.js'
 import { generate } from '../src/generate.js'
 import type { OgCard, OgConfig, OgRenderer } from '../src/types.js'
 
@@ -26,6 +28,25 @@ afterEach(async () => {
 })
 
 describe('generate', () => {
+  it('adapts legacy specs, encoded renderers, and absolute outputs', async () => {
+    const outputDirectory = '/project/public/og'
+    const cards = fromLegacyCards([{ outFile: 'index.svg', props: { title: 'Legacy' } }])
+    const renderer = createEncodedRenderer<CardData>(data => `<svg>${data.title}</svg>`)
+
+    expect(cards).toEqual([{ data: { title: 'Legacy' }, output: 'index.svg' }])
+
+    expect(relativeOutput(outputDirectory, '/project/public/og/pages/index.svg'))
+      .toBe('pages/index.svg')
+
+    expect(await renderer(cards[0]?.data ?? { title: '' }, {
+      format: 'svg',
+      height: 630,
+      outputPath: '/tmp/index.svg',
+      root: '/tmp',
+      width: 1200
+    })).toBe('<svg>Legacy</svg>')
+  })
+
   it('writes cards and skips unchanged outputs using content fingerprints', async () => {
     const root = await createRoot()
     const renderer = vi.fn<OgRenderer<CardData>>(data => `<svg>${data.title}</svg>`)
@@ -79,6 +100,129 @@ describe('generate', () => {
     expect((await generate(config)).generated).toEqual(['index.svg'])
 
     expect(renderer).toHaveBeenCalledTimes(3)
+  })
+
+  it('detects corrupted output bytes in generate and check modes', async () => {
+    const root = await createRoot()
+    const output = path.join(root, 'public/og/index.svg')
+
+    const config: OgConfig<CardData> = {
+      cards: [{ data: { title: 'Original' }, output: 'index.svg' }],
+      renderer: data => `<svg>${data.title}</svg>`,
+      root
+    }
+
+    await generate(config)
+
+    await writeFile(output, '<svg>corrupted</svg>')
+
+    expect((await generate(config, { check: true })).stale).toEqual(['index.svg'])
+
+    expect((await generate(config)).generated).toEqual(['index.svg'])
+
+    await expect(readFile(output, 'utf8')).resolves.toBe('<svg>Original</svg>')
+  })
+
+  it('expands source callbacks and glob patterns', async () => {
+    const root = await createRoot()
+    const sourceDirectory = path.join(root, 'covers')
+
+    await mkdir(sourceDirectory)
+
+    await writeFile(path.join(sourceDirectory, 'one.txt'), 'one')
+
+    const config: OgConfig<CardData> = {
+      cache: { sources: () => ['covers/*.txt'] },
+      cards: [{ data: { title: 'Glob' }, output: 'index.svg' }],
+      renderer: data => `<svg>${data.title}</svg>`,
+      root
+    }
+
+    await generate(config)
+
+    await writeFile(path.join(sourceDirectory, 'one.txt'), 'two')
+
+    expect((await generate(config)).generated).toEqual(['index.svg'])
+  })
+
+  it('writes aliases and named output directories with one render', async () => {
+    const root = await createRoot()
+    const renderer = vi.fn<OgRenderer<CardData>>(data => `<svg>${data.title}</svg>`)
+
+    const config: OgConfig<CardData> = {
+      cards: [{
+        aliases: ['og-image.svg', { directory: 'app', output: 'route.svg' }],
+        data: { title: 'Shared' },
+        output: 'og.svg'
+      }],
+      outputDirectories: { app: 'apps/site/public' },
+      renderer,
+      root
+    }
+
+    const result = await generate(config)
+
+    expect(result.generated).toEqual(['og.svg', 'og-image.svg', 'app:route.svg'])
+
+    expect(renderer).toHaveBeenCalledOnce()
+
+    await expect(readFile(path.join(root, 'apps/site/public/route.svg'), 'utf8'))
+      .resolves.toBe('<svg>Shared</svg>')
+
+    const cleaned = await generate({ cards: [], clean: true, renderer, root })
+
+    expect(cleaned.cleaned).toEqual(['app:route.svg', 'og-image.svg', 'og.svg'])
+
+    await expect(readFile(path.join(root, 'apps/site/public/route.svg')))
+      .rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('copies pass-through assets and tracks them for cleanup', async () => {
+    const root = await createRoot()
+
+    await writeFile(path.join(root, 'icon.svg'), '<svg>icon</svg>')
+
+    const assets = [{ aliases: ['icon-copy.svg'], output: 'icon.svg', source: 'icon.svg' }]
+
+    const config: OgConfig<CardData> = {
+      assets,
+      cards: [],
+      clean: true,
+      renderer: () => '',
+      root
+    }
+
+    expect((await generate(config)).generated).toEqual(['icon.svg', 'icon-copy.svg'])
+
+    assets.splice(0)
+
+    expect((await generate(config)).cleaned).toEqual(['icon-copy.svg', 'icon.svg'])
+  })
+
+  it('compares generated pixels without replacing the existing output', async () => {
+    const root = await createRoot()
+
+    const config: OgConfig<CardData> = {
+      cards: [{ data: { title: 'Current' }, output: 'index.svg' }],
+      renderer: () => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="red"/></svg>',
+      root
+    }
+
+    await generate(config)
+
+    const output = path.join(root, 'public/og/index.svg')
+
+    await writeFile(output, '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="blue"/></svg>')
+
+    const comparisons = await compare(config)
+
+    expect(comparisons[0]).toMatchObject({
+      output: 'index.svg',
+      pixelDifference: { different: 100, total: 100 },
+      status: 'changed'
+    })
+
+    await expect(readFile(output, 'utf8')).resolves.toContain('fill="blue"')
   })
 
   it('cleans only obsolete outputs tracked by the manifest', async () => {

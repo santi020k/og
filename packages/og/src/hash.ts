@@ -81,3 +81,7 @@ export const hashValues = async (
 
   return hash.digest('hex')
 }
+
+export const hashBuffer = (value: Buffer | string | Uint8Array): string => (
+  createHash('sha256').update(value).digest('hex')
+)

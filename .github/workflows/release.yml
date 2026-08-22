@@ -6,7 +6,7 @@ on:
       version:
         description: Version to publish
         required: true
-        default: 0.1.0
+        default: 0.2.0
         type: string
 
 permissions:
@@ -88,16 +88,24 @@ jobs:
         env:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
-          for attempt in 1 2 3 4 5; do
+          MAX_ATTEMPTS=30
+
+          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
             PUBLISHED_VERSION=$(npm view "@santi020k/og@$RELEASE_VERSION" version 2>/dev/null || true)
             if [ "$PUBLISHED_VERSION" = "$RELEASE_VERSION" ]; then
+              echo "Verified @santi020k/og@$RELEASE_VERSION in the npm registry."
               exit 0
             fi
-            echo "Registry verification attempt $attempt did not find the package yet."
-            sleep 5
+
+            if [ "$attempt" -eq "$MAX_ATTEMPTS" ]; then
+              break
+            fi
+
+            echo "Registry verification attempt $attempt/$MAX_ATTEMPTS did not find the package yet; retrying in 10 seconds."
+            sleep 10
           done
 
-          echo "The npm registry did not return @santi020k/og@$RELEASE_VERSION."
+          echo "The npm registry did not return @santi020k/og@$RELEASE_VERSION after five minutes."
           exit 1
 
       - name: Create tag and GitHub release

@@ -41,8 +41,13 @@ export default defineConfig({
 })
 ```
 
-If a project intentionally publishes both SVG and PNG versions, add two cards with the same data
-and different output extensions. The extension controls encoding.
+If a project intentionally publishes different formats, add one card per format because the
+extension controls encoding. When several names use the same format, list them as `aliases` so the
+renderer runs once.
+
+Existing functions that already return encoded image buffers can use `createEncodedRenderer`
+instead of moving backward to SVG. `fromLegacyCards` converts repeated `{ outFile, props }` specs,
+and `relativeOutput` safely derives card outputs from absolute legacy filenames.
 
 ## Satori projects
 
@@ -94,7 +99,7 @@ import { collectSpecs } from './scripts/collect-og-specs.mjs'
 
 export default defineConfig({
   cards: collectSpecs,
-  concurrency: process.env.OG_WORKERS ? Number(process.env.OG_WORKERS) : 'auto',
+  concurrency: process.env.OG_WORKERS ? Number(process.env.OG_WORKERS) : { mode: 'auto', max: 16 },
   renderer: defineWorkerRenderer({
     module: new URL('./scripts/render-og-card.mjs', import.meta.url),
   }),
@@ -104,6 +109,23 @@ export default defineConfig({
 This replaces each project's worker-pool and worker-protocol copies. Keep content parsing local
 because the schemas differ across Starlight, Astro content collections, portfolio projects, blog
 series, and manually declared routes.
+
+For Satori-only workers, export the existing `{ satori, sharp, template }` options object and use
+`createSatoriWorkerRenderer` in the config. The helper owns the worker-side adapter, eliminating an
+entry module whose only job is calling `createSatoriRenderer`.
+
+Worker cache discovery follows local static imports and literal font or asset reads. Declare dynamic
+collection assets with a glob or callback, for example `sources: () => covers.map(...)`.
+
+## Multi-app output and asset migration
+
+Use `outputDirectories` for repositories that publish into several `apps/*/public` trees. Select a
+named directory with `card.outputDirectory`, or select a different destination on an alias with
+`{ directory, output }`. This keeps every card path relative and traversal-protected.
+
+Use the top-level `assets` collection for icons or other files that must be copied beside generated
+cards. Asset outputs and aliases participate in the same content digest, manifest, check, and
+tracked-only cleanup behavior as rendered cards.
 
 ## Personal-brand preset
 
@@ -131,5 +153,7 @@ export default defineConfig({
 4. astro-doctor and ContracTrack.
 5. eslint-config-basic and santi020k.com after validating worker performance and memory use.
 
-During migration, generate with `--force` once and compare file dimensions and representative cards
-before deleting the original orchestration script.
+During migration, run `santi-og compare`. It renders in a temporary directory and reports dimensions,
+format, byte size, and decoded pixel differences without replacing the committed images. After the
+comparison is accepted, generate with `--force` once before deleting the original orchestration
+script.
