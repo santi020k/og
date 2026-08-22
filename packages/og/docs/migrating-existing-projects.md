@@ -1,9 +1,9 @@
 # Migrating existing projects
 
-Version 0.4 adds typed catalog mapping, multi-format cards, deterministic typography,
-version-aware caching, richer content filters, and migration automation on top of the default design
-layer introduced in 0.3. Preset and custom renderers use the same generation, caching, cleanup, and
-CI behavior.
+Version 0.4 adds portable page metadata, framework-neutral content, typed catalog mapping,
+multi-format cards, deterministic typography, version-aware caching, richer content filters, and
+migration automation on top of the default design layer introduced in 0.3. Preset and custom
+renderers use the same generation, caching, cleanup, and CI behavior.
 
 ## Prefer a preset for conventional cards
 
@@ -40,16 +40,45 @@ export default definePresetConfig({
 `createPathCards` turns `/`, `/docs/api`, and encoded URL segments into stable WebP outputs. Set
 `extension` or `directory` once instead of repeating output mapping for every page.
 
-## Astro Markdown and MDX
+## Reuse page data for metadata
 
-Replace custom recursive directory walking and YAML parsing with the Astro helper:
+Replace separate page SEO objects and card definitions with one portable page definition. Map
+renderer-only fields explicitly, then derive HTML descriptors or Next.js metadata from the same
+title, description, URL, and image contract:
 
 ```js
-import { collectAstroContentCards } from '@santi020k/og/astro'
+import { createMetaTags, createPageCard, definePageMetadata } from '@santi020k/og/metadata'
+import { toNextMetadata } from '@santi020k/og/metadata/next'
+
+const page = definePageMetadata({
+  pathname: '/docs',
+  title: 'Documentation',
+  description: 'Learn the product.',
+  image: { output: 'docs.webp', alt: 'Documentation social card' },
+})
+
+const card = createPageCard(page, {
+  data: ({ description, title }) => ({ description, title, variant: 'docs' }),
+})
+
+const site = { siteUrl: 'https://example.com', siteName: 'Example' }
+const tags = createMetaTags(page, site)
+const metadata = toNextMetadata(page, site)
+```
+
+Use `renderMetaTags` from `@santi020k/og/metadata/html` for escaped static or server-rendered HTML.
+Run image generation before the web-framework build so every referenced static image exists.
+
+## Framework-neutral Markdown and MDX
+
+Replace custom recursive directory walking and YAML parsing with the content helper:
+
+```js
+import { collectContentCards } from '@santi020k/og/content'
 import { definePresetConfig } from '@santi020k/og/presets'
 
 export default definePresetConfig({
-  cards: () => collectAstroContentCards({
+  cards: () => collectContentCards({
     directory: 'src/content/docs',
     map: entry => ({
       title: String(entry.frontmatter.title),
@@ -65,7 +94,8 @@ export default definePresetConfig({
 The helper understands nested `index.md` routes, excludes drafts by default, and automatically
 tracks each content file as a card source. Use `include` and `exclude` before parsing, `filter` and a
 custom `draft` predicate after parsing, `coverFields` for fallbacks, and `aggregate` for tag,
-pagination, or locale cards.
+pagination, or locale cards. Existing `collectAstroContentCards` and `readAstroContent` imports from
+`@santi020k/og/astro` remain compatibility aliases.
 
 ## Typed data catalogs and multiple formats
 

@@ -23,6 +23,10 @@ santi020k-theme, Astro Doctor, eslint-config-basic, santi020k.com, and ContracTr
 
 ## Completed in 0.4
 
+- Portable page definitions that derive cards, Open Graph and X descriptors, escaped HTML, and
+  dependency-free Next.js metadata from the same source.
+- A framework-neutral Markdown/MDX entry point with compatibility aliases for existing Astro
+  consumers.
 - Generic typed `createCards` mapping for data catalogs, derived archives, pagination, and CMS
   results.
 - First-class multi-format cards and per-format aliases without repeated logical card definitions.
