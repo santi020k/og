@@ -1,6 +1,6 @@
 {
   "name": "@santi020k/og",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Generate deterministic Open Graph images with project-owned designs and a reusable pipeline.",
   "type": "module",
   "sideEffects": false,
