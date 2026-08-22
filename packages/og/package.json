@@ -72,11 +72,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/santi020k/santi020k-og.git"
+    "url": "git+https://github.com/santi020k/og.git",
+    "directory": "packages/og"
   },
   "homepage": "https://og.santi020k.com",
   "bugs": {
-    "url": "https://github.com/santi020k/santi020k-og/issues"
+    "url": "https://github.com/santi020k/og/issues"
   },
   "keywords": [
     "open-graph",

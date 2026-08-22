@@ -1,0 +1,70 @@
+name: Deploy website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "packages/og/**"
+      - ".github/workflows/deploy-web.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - "wrangler.jsonc"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: deploy-web-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CLOUDFLARE_PAGES_PROJECT_NAME: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME || 'santi020k-og' }}
+  PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://og.santi020k.com' }}
+
+jobs:
+  deploy:
+    name: Build and deploy website
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: website-production
+      url: ${{ env.PUBLIC_SITE_URL }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build website
+        run: pnpm run build
+
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+          pnpm exec wrangler pages deploy apps/web/dist \
+            --project-name="$CLOUDFLARE_PAGES_PROJECT_NAME" \
+            --branch="$GITHUB_REF_NAME" \
+            --commit-hash="$GITHUB_SHA" \
+            --commit-dirty=true

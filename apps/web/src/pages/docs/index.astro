@@ -1,0 +1,268 @@
+---
+import SiteFooter from '../../components/SiteFooter.astro'
+import SiteHeader from '../../components/SiteHeader.astro'
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const description = 'Install, configure, and run @santi020k/og with Sharp, Satori, worker threads, deterministic caching, and safe cleanup.'
+
+const sections = [
+  ['quick-start', 'Quick start'],
+  ['configuration', 'Configuration'],
+  ['sharp', 'Sharp renderer'],
+  ['satori', 'Satori renderer'],
+  ['workers', 'Large collections'],
+  ['cache-and-cleanup', 'Cache and cleanup'],
+  ['ci', 'CI checks'],
+  ['cli', 'CLI reference'],
+  ['config-reference', 'Config reference'],
+] as const
+
+const quickStart = `pnpm add -D @santi020k/og
+pnpm exec santi-og init
+pnpm exec santi-og generate`
+
+const packageScripts = `{
+  "scripts": {
+    "generate:og": "santi-og generate",
+    "generate:og:force": "santi-og generate --force",
+    "check:og": "santi-og check"
+  }
+}`
+
+const configuration = `import { defineConfig } from '@santi020k/og'
+import { createSharpRenderer } from '@santi020k/og/sharp'
+
+export default defineConfig({
+  outputDirectory: 'public/og/pages',
+  clean: true,
+  cache: {
+    sources: [
+      'scripts/render-og-card.mjs',
+      'public/fonts/Inter-Bold.ttf',
+      'public/logo.svg',
+    ],
+  },
+  cards: async () => [
+    {
+      output: 'index.webp',
+      data: {
+        title: 'Home',
+        description: 'Welcome to the project.',
+      },
+    },
+  ],
+  renderer: createSharpRenderer({
+    renderSvg: ({ title }, { height, width }) =>
+      \`<svg viewBox="0 0 \${width} \${height}">...</svg>\`,
+    webp: { quality: 86 },
+  }),
+})`
+
+const sharpExample = `import { createSharpRenderer } from '@santi020k/og/sharp'
+
+const renderer = createSharpRenderer({
+  renderSvg: (data, { height, width }) =>
+    \`<svg xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 \${width} \${height}">
+      <rect width="100%" height="100%" fill="#07110e" />
+      <text x="72" y="315" fill="#eafff6" font-size="72">
+        \${data.title}
+      </text>
+    </svg>\`,
+  webp: { quality: 86 },
+  png: { compressionLevel: 9 },
+})`
+
+const satoriExample = `import { readFile } from 'node:fs/promises'
+import { defineConfig } from '@santi020k/og'
+import { createSatoriRenderer, html } from '@santi020k/og/satori'
+
+const regular = await readFile('public/fonts/Inter-Regular.ttf')
+
+export default defineConfig({
+  cards: [{ output: 'index.webp', data: { title: 'Hello' } }],
+  renderer: createSatoriRenderer({
+    satori: {
+      fonts: [{ data: regular, name: 'Inter', weight: 400 }],
+    },
+    template: ({ title }) =>
+      html\`<div style="display:flex">\${title}</div>\`,
+    sharp: { webp: { quality: 86 } },
+  }),
+})`
+
+const workerExample = `import { defineConfig, defineWorkerRenderer } from '@santi020k/og'
+
+export default defineConfig({
+  cards: collectCards,
+  concurrency: 'auto',
+  renderer: defineWorkerRenderer({
+    module: new URL('./scripts/render-og-card.mjs', import.meta.url),
+  }),
+})`
+
+const ciExample = `- name: Generate Open Graph images
+  run: pnpm run generate:og
+
+- name: Verify committed images
+  run: pnpm run check:og`
+---
+
+<BaseLayout title="Documentation" description={description}>
+  <SiteHeader active="docs" />
+
+  <main id="content">
+    <section class="docs-hero shell">
+      <div class="docs-breadcrumb"><a href="/">Home</a><span>/</span><span>Documentation</span></div>
+      <div class="docs-hero-grid">
+        <div>
+          <span class="kicker">Documentation</span>
+          <h1>Build social cards<br /><em>on your terms.</em></h1>
+        </div>
+        <p>{description} Your content and visual system stay inside your project.</p>
+      </div>
+      <div class="docs-meta">
+        <span><b>v0.1.0</b> Current release</span>
+        <span><b>Node.js 22.18+</b> Runtime</span>
+        <span><b>TypeScript</b> First-class types</span>
+      </div>
+    </section>
+
+    <div class="docs-grid shell">
+      <aside class="docs-sidebar" aria-label="Documentation navigation">
+        <p>On this page</p>
+        <ol>
+          {sections.map(([id, label]) => <li><a href={`#${id}`}>{label}</a></li>)}
+        </ol>
+        <a class="docs-source-link" href="https://github.com/santi020k/og">View source <span>↗</span></a>
+      </aside>
+
+      <article class="docs-content">
+        <section class="docs-intro">
+          <p class="docs-lead">@santi020k/og is a renderer-agnostic build tool for deterministic Open Graph images. Supply card data and a renderer; the package handles paths, encoding, caching, concurrency, cleanup, and verification.</p>
+          <div class="docs-callout">
+            <span>Core idea</span>
+            <p>The generator owns the repetitive pipeline. Your application keeps ownership of its brand, content discovery, fonts, assets, and card composition.</p>
+          </div>
+        </section>
+
+        <section id="quick-start">
+          <span class="docs-section-number">01</span>
+          <h2>Quick start</h2>
+          <p>Install the package, generate a complete starter configuration, then render your first card.</p>
+          <div class="code-window">
+            <div class="code-title"><span></span><span></span><span></span><b>Terminal</b></div>
+            <pre><code>{quickStart}</code></pre>
+          </div>
+          <p>The generated <code>og.config.mjs</code> is a working SVG-to-WebP example. Replace its card data and SVG with your project’s content and design.</p>
+          <h3>Add stable scripts</h3>
+          <p>Package scripts keep local development and CI using the same commands.</p>
+          <pre><code>{packageScripts}</code></pre>
+        </section>
+
+        <section id="configuration">
+          <span class="docs-section-number">02</span>
+          <h2>Configuration</h2>
+          <p>Create <code>og.config.mjs</code>, <code>og.config.js</code>, or <code>og.config.ts</code> in your project root. The config can contain a static card array or collect cards asynchronously from Markdown, a CMS, or any other source.</p>
+          <pre><code>{configuration}</code></pre>
+          <p>Card <code>data</code> accepts any serializable shape. Each card can override its dimensions and declare additional source files. The output extension selects SVG, PNG, WebP, JPEG, or AVIF encoding.</p>
+        </section>
+
+        <section id="sharp">
+          <span class="docs-section-number">03</span>
+          <h2>Sharp renderer</h2>
+          <p>Use the Sharp adapter when your design is expressed as SVG. Return an SVG string and the adapter handles the requested output encoding.</p>
+          <pre><code>{sharpExample}</code></pre>
+          <div class="docs-note"><strong>Keep dynamic SVG safe.</strong><p>Escape user- or CMS-authored text before inserting it into XML.</p></div>
+        </section>
+
+        <section id="satori">
+          <span class="docs-section-number">04</span>
+          <h2>Satori renderer</h2>
+          <p>The Satori entry point includes Satori, Resvg-compatible SVG output, Sharp encoding, and the <code>satori-html</code> template helper.</p>
+          <pre><code>{satoriExample}</code></pre>
+          <p>Fonts are explicit so output remains portable and deterministic across developer machines and CI.</p>
+        </section>
+
+        <section id="workers">
+          <span class="docs-section-number">05</span>
+          <h2>Large collections</h2>
+          <p>For hundreds of cards, export a renderer from a separate module and let the CLI create a bounded worker pool.</p>
+          <pre><code>{workerExample}</code></pre>
+          <p>The renderer module default-exports the same <code>(data, context) =&gt; output</code> function used by a regular config. Worker card data must support structured cloning. Set a fixed concurrency when CI or native image libraries have tight memory limits.</p>
+        </section>
+
+        <section id="cache-and-cleanup">
+          <span class="docs-section-number">06</span>
+          <h2>Cache and cleanup guarantees</h2>
+          <p>The default <code>.og-cache.json</code> fingerprint includes card data, dimensions, output name, config contents, and declared source-file contents. Worker renderer modules are included automatically.</p>
+          <div class="guarantee-grid">
+            <div><span>Fingerprint</span><strong>Content-aware</strong><p>Only cards affected by a content or source change are rebuilt.</p></div>
+            <div><span>Cleanup</span><strong>Tracked only</strong><p>Only obsolete files from the previous manifest may be removed.</p></div>
+            <div><span>Paths</span><strong>Root constrained</strong><p>Outputs and manifests cannot traverse outside the project root.</p></div>
+          </div>
+          <p>If generated images are committed, commit the manifest alongside them so a fresh checkout can verify every fingerprint.</p>
+        </section>
+
+        <section id="ci">
+          <span class="docs-section-number">07</span>
+          <h2>CI checks</h2>
+          <p><code>santi-og check</code> exits with an error when an output is missing or stale, without writing or deleting files.</p>
+          <pre><code>{ciExample}</code></pre>
+          <p>Use <code>generate</code> when images are build artifacts. Use <code>check</code> when images and <code>.og-cache.json</code> are committed to the repository.</p>
+        </section>
+
+        <section id="cli">
+          <span class="docs-section-number">08</span>
+          <h2>CLI reference</h2>
+          <div class="docs-table-wrap">
+            <table>
+              <thead><tr><th>Command or option</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td><code>init</code></td><td>Create a starter configuration.</td></tr>
+                <tr><td><code>generate</code></td><td>Render changed cards and optionally clean tracked outputs.</td></tr>
+                <tr><td><code>check</code></td><td>Report missing or stale cards without mutation.</td></tr>
+                <tr><td><code>--config, -c</code></td><td>Use a specific configuration file.</td></tr>
+                <tr><td><code>--concurrency</code></td><td>Set active renders to a positive number or <code>auto</code>.</td></tr>
+                <tr><td><code>--force, -f</code></td><td>Regenerate every card regardless of its fingerprint.</td></tr>
+                <tr><td><code>--clean</code></td><td>Remove obsolete outputs tracked by the manifest.</td></tr>
+                <tr><td><code>--silent, -s</code></td><td>Hide per-file progress.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><code>FORCE_OG=1</code> behaves like <code>--force</code>, and <code>OG_WORKER_THREADS=&lt;number&gt;</code> behaves like <code>--concurrency</code>. Explicit flags take precedence.</p>
+        </section>
+
+        <section id="config-reference">
+          <span class="docs-section-number">09</span>
+          <h2>Config reference</h2>
+          <div class="docs-table-wrap">
+            <table>
+              <thead><tr><th>Property</th><th>Default</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td><code>cards</code></td><td>Required</td><td>Cards or an asynchronous card collector.</td></tr>
+                <tr><td><code>renderer</code></td><td>Required</td><td>A renderer function or worker descriptor.</td></tr>
+                <tr><td><code>outputDirectory</code></td><td><code>public/og</code></td><td>Output directory relative to the project root.</td></tr>
+                <tr><td><code>width</code></td><td><code>1200</code></td><td>Default image width; cards may override it.</td></tr>
+                <tr><td><code>height</code></td><td><code>630</code></td><td>Default image height; cards may override it.</td></tr>
+                <tr><td><code>cache</code></td><td>Enabled</td><td>Boolean or cache options with manifest and shared sources.</td></tr>
+                <tr><td><code>clean</code></td><td><code>false</code></td><td>Remove obsolete outputs previously tracked by the tool.</td></tr>
+                <tr><td><code>concurrency</code></td><td>Renderer-based</td><td>Maximum active renders or <code>auto</code>.</td></tr>
+                <tr><td><code>root</code></td><td>Config directory</td><td>Project root used to resolve and constrain paths.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="docs-next">
+          <span class="kicker">Go further</span>
+          <h2>Bring your existing renderer.</h2>
+          <p>Keep the design you already have and replace only the orchestration layer.</p>
+          <a class="button" href="https://github.com/santi020k/og/blob/main/packages/og/docs/migrating-existing-projects.md">Read the migration guide <span>↗</span></a>
+        </section>
+      </article>
+    </div>
+  </main>
+
+  <SiteFooter />
+</BaseLayout>
