@@ -26,6 +26,8 @@ interface TurnstileVerification {
   success: boolean
 }
 
+const turnstileTestSecret = '1x0000000000000000000000000000000AA'
+
 const isDnsResponse = (value: unknown): value is DnsResponse => {
   if (!value || typeof value !== 'object') return false
 
@@ -115,6 +117,8 @@ const verifyTurnstile = async (
   const value: unknown = await response.json()
 
   if (!isTurnstileVerification(value)) throw new Error('Turnstile returned an invalid verification response.')
+
+  if (secret === turnstileTestSecret) return value.success
 
   return value.success && value.action === 'inspect' && value.hostname === new URL(request.url).hostname
 }
