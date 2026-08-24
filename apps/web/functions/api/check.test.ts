@@ -21,6 +21,8 @@ const context = (input: Request) => ({
   request: input
 })
 
+const turnstileTestSecret = '1x0000000000000000000000000000000AA'
+
 describe('hosted checker protections', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(Response.json({
@@ -84,6 +86,23 @@ describe('hosted checker protections', () => {
     const response = await onRequestPost(context(request('https://example.com')))
 
     expect(response.status).toBe(503)
+  })
+
+  test('accepts Cloudflare test credentials during local development', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(Response.json({
+      hostname: 'example.com',
+      success: true
+    }))))
+
+    const response = await onRequestPost({
+      env: { TURNSTILE_SECRET_KEY: turnstileTestSecret },
+      request: request('http://127.0.0.1')
+    })
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Private and reserved addresses can only be inspected with the CLI.'
+    })
   })
 
   test('blocks private destinations after human verification', async () => {
