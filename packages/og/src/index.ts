@@ -44,6 +44,17 @@ export {
 export { defineConfig, defineWorkerRenderer } from './config.js'
 export { generate } from './generate.js'
 export {
+  assertPublicInspectionUrl,
+  type InspectedImage,
+  type InspectedMetadata,
+  inspectHtml,
+  type InspectionCheck,
+  type InspectionStatus,
+  inspectUrl,
+  type InspectUrlOptions,
+  type UrlInspection
+} from './inspect.js'
+export {
   createLocaleAlternates,
   createLocaleAuditHrefs,
   type LocaleAlternatesOptions,

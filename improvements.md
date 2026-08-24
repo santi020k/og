@@ -1,9 +1,9 @@
 # Parent-project audit, learnings, and next improvements
 
 This document records the August 24, 2026 audit of every sibling directory under
-`Projects/santi020k` and the resulting `@santi020k/og` 0.7 work. The historical release and
+`Projects/santi020k` and the resulting `@santi020k/og` 0.7 and 0.8 work. The historical release and
 migration notes remain in `improvement.md`; this file focuses on the latest full parent-folder
-review requested for 0.7.
+review and the stabilization evidence gathered before 1.0.
 
 ## Audit coverage
 
@@ -76,6 +76,18 @@ workspaces and pnpm package patterns is more accurate than recursively rewriting
 `package.json`, avoids examples and excluded workspaces, and keeps the reported changed file paths
 reviewable.
 
+## What was validated for 0.8
+
+- MeMudo.ai now exercises the portable Next.js adapter and a single locale route matrix for six
+  statically generated Spanish and English routes.
+- The documentation site exercises a commit-pinned, digest-verified remote image during a real
+  build.
+- The published export surface and root runtime exports are locked by contract tests.
+- The complete suite targets Node.js 22 and 24, and the packed artifact builds in the Next.js
+  consumer rather than relying on workspace linking.
+- Live inspection is portable across programmatic use, the localhost CLI, and the hosted checker,
+  while hosted callers retain responsibility for DNS- and egress-aware URL authorization.
+
 ## Possible next improvements
 
 - Add ETag generation and conditional-request helpers to runtime responses when multiple consumers
@@ -91,9 +103,8 @@ reviewable.
 - Add an adoption-report command that inventories sibling or workspace projects, distinguishes
   shared mechanics from retained product policy, and measures generated cards, audited routes, and
   removable orchestration without mutating consumers.
-- Migrate Quality next: its generator maps directly to custom preset decoration plus content cards,
-  and its SEO/AI-resource validator is now largely covered by the audit APIs.
-- Evaluate aaronmgz as the first runtime-response adopter and memudo.ai as the first full Next.js
-  locale-metadata adopter before adding framework-specific runtime adapters.
+- Extend adoption from the completed Quality, aaronmgz, and MeMudo.ai pilots only when another
+  consumer exposes a repeated contract gap; avoid adding framework-specific adapters without that
+  evidence.
 - Keep single-image product sites such as Coolstead, Difftale, Fenix, and Roadscore on simple static
   assets unless per-route cards or repeated validation provide enough value to justify adoption.

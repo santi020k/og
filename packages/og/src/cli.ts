@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
+import { spawn } from 'node:child_process'
 import { access, readFile, stat, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:http'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
@@ -10,6 +12,8 @@ import type { AuditConfig } from './audit-config.js'
 import { createLlmsAuditRule, standardAuditRules } from './audit-rules.js'
 import { compare } from './compare.js'
 import { generate } from './generate.js'
+import type { UrlInspection } from './inspect.js'
+import { inspectUrl } from './inspect.js'
 import { createMigrationReport } from './report.js'
 import type { OgConfig } from './types.js'
 import { upgradeProject } from './upgrade.js'
@@ -43,6 +47,7 @@ Usage:
   santi-og check [options]
   santi-og compare [options]
   santi-og audit [--site <directory>] [options]
+  santi-og inspect <url> [--json | --open]
   santi-og init [options]
   santi-og migrate --report [options]
   santi-og upgrade [options]
@@ -54,6 +59,7 @@ Options:
   --clean               Remove outputs for cards deleted from the config
   --silent              Hide per-file progress
   --json                Print a machine-readable JSON result
+  --open                Open an interactive local inspection report
   --sarif               Print SEO audit findings as SARIF
   --site <directory>    Built site directory audited by the audit command
   --site-url <url>      Public site URL used to resolve canonical and image URLs
@@ -463,6 +469,111 @@ const executeAudit = async (options: {
   if (!result.passed) process.exitCode = 1
 }
 
+const escapeHtml = (value: string): string => value
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll('\'', '&#39;')
+
+const inspectionReportHtml = (result: UrlInspection): string => {
+  const checks = result.checks.map(item => `<li class="${item.status}">
+    <span>${escapeHtml(item.status)}</span><div><strong>${escapeHtml(item.label)}</strong><p>${escapeHtml(item.message)}</p></div>
+  </li>`).join('')
+
+  const image = result.image ? `<img src="${escapeHtml(result.image.url)}" alt="${escapeHtml(result.metadata.openGraph['og:image:alt'] ?? 'Inspected social image')}" referrerpolicy="no-referrer">` : ''
+
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>Metadata inspection — ${escapeHtml(result.finalUrl)}</title><style>
+:root{color-scheme:dark;font:16px/1.5 Inter,system-ui,sans-serif;color:#eafff6;background:#07110e}*{box-sizing:border-box}body{margin:0}main{width:min(960px,calc(100% - 32px));margin:auto;padding:64px 0}a{color:#65f6bd}h1{margin:.4rem 0;font-size:clamp(2rem,6vw,4rem);line-height:1}header p{color:#9ab2a8;word-break:break-all}.summary{display:flex;gap:10px;margin:28px 0}.summary span,li>span{padding:5px 9px;border:1px solid #1b382e;border-radius:999px;font:700 12px ui-monospace,monospace;text-transform:uppercase}.pass{color:#65f6bd}.warning{color:#ffd479}.error{color:#ff9a9a}img{display:block;width:100%;height:auto;margin:28px 0;border:1px solid #1b382e;border-radius:14px}ul{padding:0;margin:28px 0;list-style:none;border:1px solid #1b382e;border-radius:14px;overflow:hidden}li{display:grid;grid-template-columns:88px 1fr;gap:16px;align-items:start;padding:18px;border-bottom:1px solid #1b382e;background:#0c1915}li:last-child{border:0}li>span{justify-self:start}strong{color:#eafff6}li p{margin:3px 0 0;color:#9ab2a8}@media(max-width:540px){main{padding:36px 0}li{grid-template-columns:1fr}}
+</style></head><body><main><header><span>@santi020k/og inspector</span><h1>${escapeHtml(result.metadata.title ?? 'Metadata inspection')}</h1><p>${escapeHtml(result.finalUrl)}</p></header>
+<div class="summary"><span class="pass">${result.summary.pass} passed</span><span class="warning">${result.summary.warning} warnings</span><span class="error">${result.summary.error} errors</span></div>${image}<ul>${checks}</ul>
+<p>Generated locally by <a href="https://og.santi020k.com/checker">@santi020k/og</a>. Press Ctrl+C in the terminal to stop this report.</p></main></body></html>`
+}
+
+const openBrowser = (url: string): void => {
+  let command = 'xdg-open'
+
+  if (process.platform === 'darwin') command = 'open'
+  else if (process.platform === 'win32') command = 'cmd'
+
+  const arguments_ = process.platform === 'win32' ? ['/c', 'start', '', url] : [url]
+  const child = spawn(command, arguments_, { detached: true, stdio: 'ignore' })
+
+  child.once('error', () => {
+    process.stderr.write('Could not open a browser automatically. Open the local report URL manually.\n')
+  })
+
+  child.unref()
+}
+
+const serveInspectionReport = async (result: UrlInspection): Promise<void> => {
+  const html = inspectionReportHtml(result)
+
+  const server = createServer((request, response) => {
+    if (request.url !== '/') {
+      response.writeHead(404).end('Not found')
+
+      return
+    }
+
+    response.writeHead(200, {
+      'cache-control': 'no-store',
+      'content-security-policy': 'default-src \'none\'; img-src http: https:; style-src \'unsafe-inline\'; base-uri \'none\'; frame-ancestors \'none\'',
+      'content-type': 'text/html; charset=utf-8',
+      'referrer-policy': 'no-referrer'
+    }).end(html)
+  })
+
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject)
+
+    server.listen(0, '127.0.0.1', resolve)
+  })
+
+  const address = server.address()
+
+  if (!address || typeof address === 'string') throw new Error('Could not start the local report server.')
+
+  const url = `http://127.0.0.1:${address.port}/`
+
+  process.stdout.write(`Opened local inspection report at ${url}\nPress Ctrl+C to stop it.\n`)
+
+  openBrowser(url)
+}
+
+const reportInspection = (result: UrlInspection): void => {
+  process.stdout.write(`Inspected ${result.finalUrl}\n`)
+
+  for (const item of result.checks) {
+    process.stdout.write(`  ${item.status.padEnd(7)} [${item.code}] ${item.message}\n`)
+  }
+
+  process.stdout.write(
+    `${result.summary.pass} passed, ${result.summary.warning} warning(s), ${result.summary.error} error(s) ` +
+    `in ${result.elapsedMilliseconds}ms.\n`
+  )
+}
+
+const executeInspect = async (url: string | undefined, json: boolean, open: boolean): Promise<void> => {
+  if (!url) throw new Error('The inspect command requires a URL.')
+
+  if (json && open) throw new Error('Use either --json or --open, not both.')
+
+  const result = await inspectUrl(url)
+
+  if (json) process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+  else reportInspection(result)
+
+  if (open) {
+    await serveInspectionReport(result)
+
+    return
+  }
+
+  if (result.summary.error > 0) process.exitCode = 1
+}
+
 const run = async (): Promise<void> => {
   const parsed = parseArgs({
     allowPositionals: true,
@@ -476,6 +587,7 @@ const run = async (): Promise<void> => {
       llms: { type: 'boolean' },
       manifest: { type: 'string' },
       'max-image-bytes': { type: 'string' },
+      open: { type: 'boolean' },
       report: { type: 'boolean' },
       root: { type: 'string' },
       sarif: { type: 'boolean' },
@@ -505,7 +617,7 @@ const run = async (): Promise<void> => {
 
   const command = parsed.positionals[0] ?? 'generate'
 
-  if (!['audit', 'check', 'compare', 'generate', 'init', 'migrate', 'upgrade'].includes(command)) {
+  if (!['audit', 'check', 'compare', 'generate', 'init', 'inspect', 'migrate', 'upgrade'].includes(command)) {
     throw new Error(`Unknown command: ${command}`)
   }
 
@@ -537,6 +649,12 @@ const run = async (): Promise<void> => {
     if (!parsed.values.report) throw new Error('The migrate command currently requires --report.')
 
     await executeMigrationReport(parsed.values.config, parsed.values.json ?? false)
+
+    return
+  }
+
+  if (command === 'inspect') {
+    await executeInspect(parsed.positionals[1], parsed.values.json ?? false, parsed.values.open ?? false)
 
     return
   }

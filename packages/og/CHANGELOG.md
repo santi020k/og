@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.0 - 2026-08-24
+
+- Define the public compatibility and deprecation contract ahead of 1.0.
+- Lock documented package subpaths and runtime exports with public API contract tests.
+- Validate the complete package suite on Node.js 22 and 24.
+- Add `santi-og inspect`, portable inspection APIs, localhost-capable reports, and a hosted checker
+  for live metadata, redirects, structured data, and social image responses.
+- Exercise pinned remote images in the documentation website build and the portable Next.js locale
+  adapter in a real consumer.
+
 ## 0.7.0 - 2026-08-24
 
 - Add portable hreflang alternates, locale-matrix helpers, and Next.js language alternate output.

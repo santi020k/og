@@ -8,3 +8,5 @@ coverage/
 .DS_Store
 *.tgz
 .og-cache.json
+.og-remote-cache/
+.wrangler/

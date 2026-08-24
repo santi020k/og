@@ -1,0 +1,427 @@
+---
+import {
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CodeTabs,
+  Field,
+  Input,
+  Label,
+  Spinner
+} from '@santi020k/lumen-astro'
+
+import SiteFooter from '../components/SiteFooter.astro'
+import SiteHeader from '../components/SiteHeader.astro'
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+const description = 'Inspect Open Graph images, social metadata, canonical URLs, robots directives, and structured data for public or localhost websites.'
+
+const localCommands = [
+  {
+    code: 'pnpm dlx @santi020k/og inspect http://localhost:4321 --open',
+    label: 'pnpm',
+    language: 'bash',
+    value: 'pnpm'
+  },
+  {
+    code: 'npx @santi020k/og inspect http://localhost:4321 --open',
+    label: 'npm',
+    language: 'bash',
+    value: 'npm'
+  }
+]
+---
+
+<BaseLayout title="OG & metadata checker" description={description}>
+  <SiteHeader active="checker" />
+
+  <main id="content" class="checker-page">
+    <section class="checker-hero shell">
+      <span class="kicker">Inspect before you share</span>
+      <h1>See what every link<br /><em>is really saying.</em></h1>
+      <p>{description}</p>
+    </section>
+
+    <section class="checker-workspace shell" aria-labelledby="checker-form-title">
+      <Card as="section" class="checker-form-card">
+        <CardHeader>
+          <CardTitle as="h2" id="checker-form-title">Inspect a website</CardTitle>
+          <CardDescription as="p">Enter a public URL. No account, cookies, or page content is stored.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form id="checker-form" class="checker-form">
+            <Field controlId="checker-url" describedBy="checker-url-help">
+              <Label for="checker-url">Website URL</Label>
+              <div class="checker-input-row">
+                <Input
+                  id="checker-url"
+                  name="url"
+                  type="text"
+                  inputmode="url"
+                  autocomplete="url"
+                  placeholder="https://example.com"
+                  required
+                  spellcheck="false"
+                  visualSize="lg"
+                />
+                <Button type="submit" size="lg" id="checker-submit">Analyze website</Button>
+              </div>
+              <p id="checker-url-help">Public URLs run here. Localhost URLs are handed to the local CLI.</p>
+            </Field>
+          </form>
+
+          <div id="checker-loading" class="checker-state" role="status" hidden>
+            <Spinner aria-label="Inspecting website" />
+            <span>Following the page, metadata, and social image…</span>
+          </div>
+
+          <Alert id="checker-error" variant="destructive" role="alert" hidden>
+            <strong>We could not inspect that URL.</strong>
+            <p data-error-message></p>
+          </Alert>
+
+          <Alert id="checker-local" variant="warning" role="status" hidden>
+            <strong>This address is only available on your computer.</strong>
+            <p>Run the inspector beside the project to avoid browser CORS and private-network restrictions.</p>
+            <code data-local-command></code>
+          </Alert>
+        </CardContent>
+      </Card>
+
+      <section id="checker-results" class="checker-results" aria-live="polite" aria-labelledby="results-title" hidden>
+        <div class="checker-results-heading">
+          <div>
+            <span class="kicker">Inspection complete</span>
+            <h2 id="results-title" data-result-title>Metadata results</h2>
+            <a data-result-url target="_blank" rel="noopener noreferrer"></a>
+          </div>
+          <div class="checker-summary" aria-label="Inspection summary">
+            <span class="checker-count checker-count-pass" data-pass-count>0 passed</span>
+            <span class="checker-count checker-count-warning" data-warning-count>0 warnings</span>
+            <span class="checker-count checker-count-error" data-error-count>0 errors</span>
+          </div>
+        </div>
+
+        <div class="checker-result-grid">
+          <Card as="section" class="checker-preview-card">
+            <CardHeader>
+              <CardTitle as="h3">Social image</CardTitle>
+              <CardDescription data-image-details>No social image found</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div class="checker-preview" data-image-container>
+                <p>Open Graph and X previews need a reachable image.</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card as="section" class="checker-metadata-card">
+            <CardHeader>
+              <CardTitle as="h3">Resolved metadata</CardTitle>
+              <CardDescription>The values a crawler receives from the final page.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <dl class="checker-metadata" data-metadata-list></dl>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card as="section" class="checker-findings-card">
+          <CardHeader>
+            <CardTitle as="h3">Checks</CardTitle>
+            <CardDescription>Evidence first: each result explains what was found instead of hiding it behind a score.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ol class="checker-findings" data-findings-list></ol>
+          </CardContent>
+        </Card>
+      </section>
+    </section>
+
+    <section class="checker-local-guide shell" aria-labelledby="local-title">
+      <div>
+        <span class="kicker">Local projects work too</span>
+        <h2 id="local-title">Inspect before deployment.</h2>
+        <p>The CLI fetches your development server directly from Node, so Astro, Next.js, and any localhost project can use the same analyzer.</p>
+      </div>
+      <CodeTabs
+        ariaLabel="Local inspection commands"
+        items={localCommands}
+        storageKey="og-inspector-package-manager"
+        theme="santi020k"
+        wrap={false}
+      />
+    </section>
+  </main>
+
+  <SiteFooter />
+
+  <script>
+    interface InspectionCheck {
+      code: string
+      label: string
+      message: string
+      status: 'error' | 'pass' | 'warning'
+    }
+
+    interface InspectionResult {
+      checks: readonly InspectionCheck[]
+      finalUrl: string
+      image?: {
+        bytes?: number
+        contentType?: string
+        height?: number
+        url: string
+        width?: number
+      }
+      metadata: {
+        canonical?: string
+        description?: string
+        language?: string
+        openGraph: Readonly<Record<string, string>>
+        robots?: string
+        schemaTypes: readonly string[]
+        title?: string
+        twitter: Readonly<Record<string, string>>
+      }
+      summary: Readonly<Record<'error' | 'pass' | 'warning', number>>
+    }
+
+    const form = document.querySelector<HTMLFormElement>('#checker-form')
+    const input = document.querySelector<HTMLInputElement>('#checker-url')
+    const submit = document.querySelector<HTMLButtonElement>('#checker-submit')
+    const loading = document.querySelector<HTMLElement>('#checker-loading')
+    const errorAlert = document.querySelector<HTMLElement>('#checker-error')
+    const localAlert = document.querySelector<HTMLElement>('#checker-local')
+    const results = document.querySelector<HTMLElement>('#checker-results')
+
+    const normalizeUrl = (value: string): URL => {
+      const trimmed = value.trim()
+      const local = /^(?:localhost|127(?:\.\d+){3}|\[?::1\]?)(?::|\/|$)/iu.test(trimmed)
+      const source = /^[a-z][a-z\d+.-]*:\/\//iu.test(trimmed) ? trimmed : `${local ? 'http' : 'https'}://${trimmed}`
+
+      return new URL(source)
+    }
+
+    const isLocalUrl = (url: URL): boolean => {
+      const hostname = url.hostname.replace(/^\[|\]$/gu, '').toLowerCase()
+
+      return hostname === 'localhost' || hostname.endsWith('.localhost') || hostname === '::1' ||
+        hostname.endsWith('.local') || hostname.endsWith('.internal') || hostname.endsWith('.home.arpa') ||
+        hostname.startsWith('127.') || hostname.startsWith('10.') || hostname.startsWith('192.168.') ||
+        hostname.startsWith('169.254.') || /^172\.(?:1[6-9]|2\d|3[01])\./u.test(hostname)
+    }
+
+    const isRecord = (value: unknown): value is Record<string, unknown> => (
+      typeof value === 'object' && value !== null && !Array.isArray(value)
+    )
+
+    const isInspectionResult = (value: unknown): value is InspectionResult => {
+      if (!isRecord(value) || typeof value.finalUrl !== 'string' || !Array.isArray(value.checks)) return false
+      if (!isRecord(value.metadata) || !isRecord(value.summary)) return false
+      if (!isRecord(value.metadata.openGraph) || !isRecord(value.metadata.twitter)) return false
+      if (!Array.isArray(value.metadata.schemaTypes)) return false
+
+      return value.checks.every(item => isRecord(item) &&
+        typeof item.code === 'string' && typeof item.label === 'string' && typeof item.message === 'string' &&
+        (item.status === 'error' || item.status === 'pass' || item.status === 'warning')) &&
+        typeof value.summary.error === 'number' && typeof value.summary.pass === 'number' &&
+        typeof value.summary.warning === 'number'
+    }
+
+    const setText = (selector: string, value: string): void => {
+      const element = document.querySelector<HTMLElement>(selector)
+
+      if (element) element.textContent = value
+    }
+
+    const setCount = (selector: string, value: number, singular: string, plural: string): void => {
+      const element = document.querySelector<HTMLElement>(selector)
+
+      if (!element) return
+
+      const number = document.createElement('strong')
+
+      number.textContent = String(value)
+      element.replaceChildren(number, ` ${value === 1 ? singular : plural}`)
+    }
+
+    const renderMetadata = (result: InspectionResult): void => {
+      const list = document.querySelector<HTMLDListElement>('[data-metadata-list]')
+
+      if (!list) return
+
+      list.replaceChildren()
+
+      const values = [
+        ['Title', result.metadata.title],
+        ['Description', result.metadata.description],
+        ['Canonical', result.metadata.canonical],
+        ['Robots', result.metadata.robots],
+        ['Language', result.metadata.language],
+        ['og:type', result.metadata.openGraph['og:type']],
+        ['twitter:card', result.metadata.twitter['twitter:card']],
+        ['JSON-LD', result.metadata.schemaTypes.join(', ') || undefined]
+      ] as const
+
+      for (const [label, value] of values) {
+        const wrapper = document.createElement('div')
+        const term = document.createElement('dt')
+        const description = document.createElement('dd')
+
+        term.textContent = label
+        description.textContent = value ?? 'Not found'
+        if (!value) description.dataset.missing = 'true'
+        wrapper.append(term, description)
+        list.append(wrapper)
+      }
+    }
+
+    const renderImage = (result: InspectionResult): void => {
+      const container = document.querySelector<HTMLElement>('[data-image-container]')
+
+      if (!container) return
+
+      container.replaceChildren()
+
+      if (!result.image) {
+        const message = document.createElement('p')
+
+        message.textContent = 'Open Graph and X previews need a reachable image.'
+        container.append(message)
+        setText('[data-image-details]', 'No social image found')
+
+        return
+      }
+
+      const image = document.createElement('img')
+
+      image.src = result.image.url
+      image.alt = result.metadata.openGraph['og:image:alt'] ?? 'Inspected social image'
+      image.referrerPolicy = 'no-referrer'
+      image.loading = 'lazy'
+      container.append(image)
+
+      const dimensions = result.image.width && result.image.height ? `${result.image.width} × ${result.image.height}` : 'unknown dimensions'
+      const bytes = result.image.bytes ? `${Math.round(result.image.bytes / 1024)} KB` : 'unknown size'
+
+      setText('[data-image-details]', `${dimensions} · ${bytes} · ${result.image.contentType ?? 'unknown type'}`)
+    }
+
+    const renderFindings = (inspection: InspectionResult): void => {
+      const list = document.querySelector<HTMLOListElement>('[data-findings-list]')
+
+      if (!list) return
+
+      list.replaceChildren()
+
+      const order = { error: 0, warning: 1, pass: 2 } as const
+      const sorted = [...inspection.checks].sort((left, right) => order[left.status] - order[right.status])
+
+      for (const finding of sorted) {
+        const item = document.createElement('li')
+        const status = document.createElement('span')
+        const copy = document.createElement('div')
+        const title = document.createElement('strong')
+        const message = document.createElement('p')
+
+        item.dataset.status = finding.status
+        status.className = 'checker-finding-status'
+        status.textContent = finding.status
+        title.textContent = finding.label
+        message.textContent = finding.message
+        copy.append(title, message)
+        item.append(status, copy)
+        list.append(item)
+      }
+    }
+
+    const renderResult = (inspection: InspectionResult): void => {
+      setText('[data-result-title]', inspection.metadata.title ?? 'Metadata results')
+      setCount('[data-pass-count]', inspection.summary.pass, 'check passed', 'checks passed')
+      setCount('[data-warning-count]', inspection.summary.warning, 'warning', 'warnings')
+      setCount('[data-error-count]', inspection.summary.error, 'error', 'errors')
+
+      const resultUrl = document.querySelector<HTMLAnchorElement>('[data-result-url]')
+
+      if (resultUrl) {
+        resultUrl.href = inspection.finalUrl
+        resultUrl.textContent = inspection.finalUrl
+      }
+
+      renderMetadata(inspection)
+      renderImage(inspection)
+      renderFindings(inspection)
+
+      if (results) {
+        results.hidden = false
+        results.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }
+
+    form?.addEventListener('submit', async event => {
+      event.preventDefault()
+      if (!input || !submit || !loading || !errorAlert || !localAlert) return
+
+      errorAlert.hidden = true
+      localAlert.hidden = true
+      if (results) results.hidden = true
+
+      let url: URL
+
+      try {
+        url = normalizeUrl(input.value)
+        if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Use an HTTP or HTTPS URL.')
+      } catch (error) {
+        setText('[data-error-message]', error instanceof Error ? error.message : 'Enter a valid URL.')
+        errorAlert.hidden = false
+
+        return
+      }
+
+      input.value = url.href
+
+      if (isLocalUrl(url)) {
+        setText('[data-local-command]', `pnpm dlx @santi020k/og inspect ${url.href} --open`)
+        localAlert.hidden = false
+
+        return
+      }
+
+      submit.disabled = true
+      submit.setAttribute('aria-busy', 'true')
+      loading.hidden = false
+
+      try {
+        const response = await fetch('/api/check', {
+          body: JSON.stringify({ url: url.href }),
+          headers: { 'content-type': 'application/json' },
+          method: 'POST'
+        })
+        const value: unknown = await response.json()
+
+        if (!value || typeof value !== 'object') throw new Error('The checker returned an invalid response.')
+        if ('error' in value && typeof value.error === 'string') throw new Error(value.error)
+
+        if (!isInspectionResult(value)) throw new Error('The checker returned an invalid response.')
+
+        renderResult(value)
+      } catch (error) {
+        setText('[data-error-message]', error instanceof Error ? error.message : 'The website could not be inspected.')
+        errorAlert.hidden = false
+      } finally {
+        submit.disabled = false
+        submit.removeAttribute('aria-busy')
+        loading.hidden = true
+      }
+    })
+
+    const query = new URLSearchParams(window.location.search).get('url')
+
+    if (input && query) input.value = query
+  </script>
+</BaseLayout>

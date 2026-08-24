@@ -4,8 +4,10 @@ Deterministic Open Graph image generation with useful visual presets and a fully
 escape hatch.
 
 [Website](https://og.santi020k.com) ·
+[OG checker](https://og.santi020k.com/checker) ·
 [npm](https://www.npmjs.com/package/@santi020k/og) ·
 [Package guide](packages/og/README.md) ·
+[Stability](packages/og/STABILITY.md) ·
 [Releases](https://github.com/santi020k/og/releases) ·
 [Issues](https://github.com/santi020k/og/issues) ·
 [Contributing](CONTRIBUTING.md)
@@ -21,6 +23,7 @@ content and brand. The package handles rendering, output paths, content-aware ca
 concurrency, safe cleanup, encoding, and CI verification. A custom Sharp or Satori renderer remains
 available when a project needs a unique composition. Framework-neutral metadata helpers reuse the
 same page definition for canonical, Open Graph, X, robots, plain HTML, and Next.js metadata.
+The website checker and `santi-og inspect` analyze the result for deployed and localhost projects.
 
 ## Quick start
 
@@ -63,8 +66,9 @@ pnpm validate
 
 ## Deployment and release
 
-The static website deploys to the `santi020k-og` Cloudflare Pages project when changes reach
-`main`. GitHub uses the `website-production` environment, the `CLOUDFLARE_API_TOKEN` and
+The website and its protected public-URL inspection function deploy to the `santi020k-og`
+Cloudflare Pages project when changes reach `main`. GitHub uses the `website-production`
+environment, the `CLOUDFLARE_API_TOKEN` and
 `CLOUDFLARE_ACCOUNT_ID` secrets, and these repository variables:
 
 - `CLOUDFLARE_PAGES_PROJECT_NAME=santi020k-og`
