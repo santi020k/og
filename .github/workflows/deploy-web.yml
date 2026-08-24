@@ -11,7 +11,6 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "turbo.json"
-      - "wrangler.jsonc"
   workflow_dispatch: {}
 
 permissions:

@@ -1,0 +1,19 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "santi020k-og",
+  "pages_build_output_dir": "dist",
+  "compatibility_date": "2026-08-22",
+  "ratelimits": [
+    {
+      "name": "CHECKER_RATE_LIMITER",
+      "namespace_id": "9020",
+      "simple": {
+        "limit": 5,
+        "period": 60
+      }
+    }
+  ],
+  "vars": {
+    "PUBLIC_SITE_URL": "https://og.santi020k.com"
+  }
+}

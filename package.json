@@ -11,14 +11,15 @@
     "lint": "turbo run lint",
     "lint:spell": "cspell \"**\" --gitignore --cache --show-suggestions --show-context",
     "test": "turbo run test",
+    "test:consumers": "pnpm --filter @santi020k/og run test:consumers",
     "typecheck": "turbo run typecheck",
     "validate": "pnpm run lint:spell && turbo run validate",
     "commit": "commitprompt",
     "hooks:install": "quality hooks install"
   },
   "devDependencies": {
-    "@santi020k/commitprompt": "1.0.0",
-    "cspell": "^10.0.1",
+    "@santi020k/commitprompt": "1.1.0",
+    "cspell": "^10.1.0",
     "turbo": "^2.10.11",
     "wrangler": "^4.125.0"
   },

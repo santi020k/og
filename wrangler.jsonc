@@ -1,9 +1,0 @@
-{
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "santi020k-og",
-  "pages_build_output_dir": "apps/web/dist",
-  "compatibility_date": "2026-08-22",
-  "vars": {
-    "PUBLIC_SITE_URL": "https://og.santi020k.com"
-  }
-}
