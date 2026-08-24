@@ -10,12 +10,7 @@ permissions:
 
 jobs:
   validate:
-    name: Validate on Node.js ${{ matrix.node-version }}
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [22, 24]
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
@@ -23,7 +18,22 @@ jobs:
           version: 10.32.1
       - uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run validate
+
+  validate-node-24:
+    name: Validate on Node.js 24
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run validate
