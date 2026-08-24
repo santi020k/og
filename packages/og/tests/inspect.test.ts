@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { assertPublicInspectionUrl, inspectHtml, inspectUrl } from '../src/inspect.js'
+import { assertPublicInspectionUrl, inspectHtml, inspectUrl, scoreInspectionChecks } from '../src/inspect.js'
 
 const completeHtml = `<!doctype html><html lang="en"><head>
 <title>Portable metadata inspector</title>
@@ -52,6 +52,16 @@ const webpLosslessHeader = (): Uint8Array => {
 }
 
 describe('metadata inspector', () => {
+  test('scores passes fully, warnings partially, and errors without credit', () => {
+    expect(scoreInspectionChecks([
+      { code: 'pass', label: 'Pass', message: 'Passed.', status: 'pass' },
+      { code: 'warning', label: 'Warning', message: 'Warning.', status: 'warning' },
+      { code: 'error', label: 'Error', message: 'Failed.', status: 'error' }
+    ])).toBe(50)
+
+    expect(scoreInspectionChecks([])).toBe(0)
+  })
+
   test('parses metadata and reports actionable checks', () => {
     const result = inspectHtml(completeHtml, 'https://example.com/final')
 
@@ -86,6 +96,8 @@ describe('metadata inspector', () => {
     expect(result.image).toMatchObject({ height: 630, status: 200, width: 1200 })
 
     expect(result.summary.error).toBe(0)
+
+    expect(result.score).toBe(100)
   })
 
   test('accepts localhost for local CLI use and rejects it for hosted inspection', async () => {

@@ -485,9 +485,9 @@ const inspectionReportHtml = (result: UrlInspection): string => {
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>Metadata inspection — ${escapeHtml(result.finalUrl)}</title><style>
-:root{color-scheme:dark;font:16px/1.5 Inter,system-ui,sans-serif;color:#eafff6;background:#07110e}*{box-sizing:border-box}body{margin:0}main{width:min(960px,calc(100% - 32px));margin:auto;padding:64px 0}a{color:#65f6bd}h1{margin:.4rem 0;font-size:clamp(2rem,6vw,4rem);line-height:1}header p{color:#9ab2a8;word-break:break-all}.summary{display:flex;gap:10px;margin:28px 0}.summary span,li>span{padding:5px 9px;border:1px solid #1b382e;border-radius:999px;font:700 12px ui-monospace,monospace;text-transform:uppercase}.pass{color:#65f6bd}.warning{color:#ffd479}.error{color:#ff9a9a}img{display:block;width:100%;height:auto;margin:28px 0;border:1px solid #1b382e;border-radius:14px}ul{padding:0;margin:28px 0;list-style:none;border:1px solid #1b382e;border-radius:14px;overflow:hidden}li{display:grid;grid-template-columns:88px 1fr;gap:16px;align-items:start;padding:18px;border-bottom:1px solid #1b382e;background:#0c1915}li:last-child{border:0}li>span{justify-self:start}strong{color:#eafff6}li p{margin:3px 0 0;color:#9ab2a8}@media(max-width:540px){main{padding:36px 0}li{grid-template-columns:1fr}}
+:root{color-scheme:dark;font:16px/1.5 Inter,system-ui,sans-serif;color:#eafff6;background:#07110e}*{box-sizing:border-box}body{margin:0}main{width:min(960px,calc(100% - 32px));margin:auto;padding:64px 0}a{color:#65f6bd}h1{margin:.4rem 0;font-size:clamp(2rem,6vw,4rem);line-height:1}header p{color:#9ab2a8;word-break:break-all}.summary{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:28px 0}.summary span,li>span{padding:5px 9px;border:1px solid #1b382e;border-radius:999px;font:700 12px ui-monospace,monospace;text-transform:uppercase}.summary .score{padding:8px 12px;color:#eafff6;border-color:#65f6bd;font-size:16px}.pass{color:#65f6bd}.warning{color:#ffd479}.error{color:#ff9a9a}img{display:block;width:100%;height:auto;margin:28px 0;border:1px solid #1b382e;border-radius:14px}ul{padding:0;margin:28px 0;list-style:none;border:1px solid #1b382e;border-radius:14px;overflow:hidden}li{display:grid;grid-template-columns:88px 1fr;gap:16px;align-items:start;padding:18px;border-bottom:1px solid #1b382e;background:#0c1915}li:last-child{border:0}li>span{justify-self:start}strong{color:#eafff6}li p{margin:3px 0 0;color:#9ab2a8}@media(max-width:540px){main{padding:36px 0}li{grid-template-columns:1fr}}
 </style></head><body><main><header><span>@santi020k/og inspector</span><h1>${escapeHtml(result.metadata.title ?? 'Metadata inspection')}</h1><p>${escapeHtml(result.finalUrl)}</p></header>
-<div class="summary"><span class="pass">${result.summary.pass} passed</span><span class="warning">${result.summary.warning} warnings</span><span class="error">${result.summary.error} errors</span></div>${image}<ul>${checks}</ul>
+<div class="summary"><span class="score">${result.score}/100</span><span class="pass">${result.summary.pass} passed</span><span class="warning">${result.summary.warning} warnings</span><span class="error">${result.summary.error} errors</span></div>${image}<ul>${checks}</ul>
 <p>Generated locally by <a href="https://og.santi020k.com/checker">@santi020k/og</a>. Press Ctrl+C in the terminal to stop this report.</p></main></body></html>`
 }
 
@@ -550,7 +550,7 @@ const reportInspection = (result: UrlInspection): void => {
   }
 
   process.stdout.write(
-    `${result.summary.pass} passed, ${result.summary.warning} warning(s), ${result.summary.error} error(s) ` +
+    `Score ${result.score}/100: ${result.summary.pass} passed, ${result.summary.warning} warning(s), ${result.summary.error} error(s) ` +
     `in ${result.elapsedMilliseconds}ms.\n`
   )
 }

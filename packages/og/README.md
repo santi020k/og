@@ -72,7 +72,8 @@ pnpm exec santi-og inspect https://example.com --json
 The report checks canonical, robots, HTML language and heading structure, Open Graph, X metadata,
 JSON-LD, image reachability, content type, dimensions, and file size. `--open` serves a private
 report on `127.0.0.1`; stop it with Ctrl+C. The command exits unsuccessfully when required metadata
-has errors, so `--json` can also be used in automation.
+has errors, so `--json` can also be used in automation. Its 0–100 score gives passes full credit,
+warnings half credit, and errors no credit; the individual checks remain the source of truth.
 
 Programmatic consumers can call `inspectHtml()` or `inspectUrl()` from
 `@santi020k/og/inspect`. `inspectUrl()` accepts a custom Fetch implementation, byte and timeout

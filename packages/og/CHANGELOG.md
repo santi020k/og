@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add a transparent 0–100 score to hosted, CLI, visual, and JSON inspection results while keeping
+  the underlying pass, warning, and error evidence visible.
+
 ## 0.9.0 - 2026-08-24
 
 - Harden the hosted checker with same-origin enforcement, server-validated single-use Cloudflare
