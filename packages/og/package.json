@@ -1,6 +1,6 @@
 {
   "name": "@santi020k/og",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Generate deterministic Open Graph images with reusable presets or project-owned renderers.",
   "type": "module",
   "sideEffects": false,
@@ -32,6 +32,10 @@
     "./content": {
       "types": "./dist/content.d.ts",
       "default": "./dist/content.js"
+    },
+    "./inspect": {
+      "types": "./dist/inspect.d.ts",
+      "default": "./dist/inspect.js"
     },
     "./metadata": {
       "types": "./dist/metadata.d.ts",

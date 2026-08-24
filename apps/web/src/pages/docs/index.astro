@@ -6,7 +6,7 @@ import SiteFooter from '../../components/SiteFooter.astro'
 import SiteHeader from '../../components/SiteHeader.astro'
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
-const description = 'Use @santi020k/og v0.7 locale metadata, runtime responses, pinned remote images, reusable audits, JSON-LD recipes, visual presets, and deterministic output management.'
+const description = 'Use @santi020k/og v0.8 locale metadata, runtime responses, pinned remote images, reusable audits, JSON-LD recipes, visual presets, and deterministic output management.'
 
 const sections = [
   ['quick-start', 'Quick start'],
@@ -259,7 +259,7 @@ const jsonResultExample = `{
   "cleaned": [],
   "stale": [],
   "total": 2,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "elapsedMilliseconds": 184
 }`
 
@@ -267,10 +267,11 @@ const cliExample = `pnpm exec santi-og init
 pnpm exec santi-og generate
 pnpm exec santi-og check
 pnpm exec santi-og compare --threshold 0.01
+pnpm exec santi-og inspect http://localhost:4321 --open
 pnpm exec santi-og audit --site dist --site-url https://example.com --sarif
 pnpm exec santi-og audit --site dist --site-url https://example.com --standards
 pnpm exec santi-og migrate --report --json
-pnpm exec santi-og upgrade --to 0.7.0`
+pnpm exec santi-og upgrade --to 0.8.0`
 ---
 
 <BaseLayout title="Documentation" description={description}>
@@ -287,7 +288,7 @@ pnpm exec santi-og upgrade --to 0.7.0`
         <p>{description} Start with a useful visual default and customize only what your project needs.</p>
       </div>
       <div class="docs-meta">
-        <span><b>v0.7.0</b> Current docs</span>
+        <span><b>v0.8.0</b> Current docs</span>
         <span><b>Node.js 22.18+</b> Runtime</span>
         <span><b>4 presets</b> Included</span>
       </div>
@@ -530,9 +531,10 @@ pnpm exec santi-og upgrade --to 0.7.0`
                 <tr><td><code>check</code></td><td>Report missing, changed, or stale cards without mutation.</td></tr>
                 <tr><td><code>compare</code></td><td>Report dimensions, format, size, and pixel differences without replacing files.</td></tr>
                 <tr><td><code>audit</code></td><td>Validate final built HTML, social images, route manifests, and required schema types.</td></tr>
+                <tr><td><code>inspect &lt;url&gt;</code></td><td>Analyze deployed or localhost metadata and social images; add <code>--open</code> for a local browser report.</td></tr>
                 <tr><td><code>migrate --report</code></td><td>Inventory cards, outputs, local renderer modules, and remaining custom responsibilities.</td></tr>
                 <tr><td><code>upgrade --to</code></td><td>Update package dependencies, pnpm catalogs, and release-age exclusions.</td></tr>
-                <tr><td><code>--json</code></td><td>Print machine-readable generation, check, comparison, migration, or upgrade results.</td></tr>
+                <tr><td><code>--json</code></td><td>Print machine-readable generation, check, comparison, inspection, migration, or upgrade results.</td></tr>
                 <tr><td><code>--threshold</code></td><td>Fail when the changed-pixel ratio exceeds the accepted value, or whenever an output is missing or changes dimensions.</td></tr>
                 <tr><td><code>--config, -c</code></td><td>Use a specific config file or package directory.</td></tr>
                 <tr><td><code>--concurrency</code></td><td>Set active renders to a positive number or <code>auto</code>.</td></tr>
@@ -550,6 +552,7 @@ pnpm exec santi-og upgrade --to 0.7.0`
               <tbody>
                 <tr><td><code>generate</code> / <code>check</code></td><td><code>command</code>, <code>config</code>, <code>cacheKey</code>, <code>checked</code>, <code>generated</code>, <code>skipped</code>, <code>cleaned</code>, <code>stale</code>, <code>total</code>, <code>version</code>, <code>elapsedMilliseconds</code>.</td></tr>
                 <tr><td><code>compare</code></td><td><code>command</code>, <code>version</code>, and <code>comparisons</code> with output, status, actual/expected image details, and changed-pixel counts and ratio.</td></tr>
+                <tr><td><code>inspect</code></td><td>Resolved URL, metadata, social-image response and dimensions, redirects, individual checks, summary, and elapsed time.</td></tr>
                 <tr><td><code>migrate --report</code></td><td>Config path and lines, generator version, cache key, custom-renderer status, local modules, logical and physical counts, and recommendations.</td></tr>
                 <tr><td><code>upgrade</code></td><td>Target version, detected package manager, and each changed file with its previous and next values.</td></tr>
               </tbody>
@@ -583,7 +586,7 @@ pnpm exec santi-og upgrade --to 0.7.0`
 
         <section class="docs-next">
           <span class="kicker">Migration guide</span>
-          <h2>Replace repeated renderers and validators with portable v0.7 workflows.</h2>
+          <h2>Replace repeated renderers and validators with portable v0.8 workflows.</h2>
           <p>The multi-project migration keeps route data and project-specific contracts local while moving rendering, metadata, schema recipes, archives, and final-output auditing into the library.</p>
           <a class="button" href="https://github.com/santi020k/og/blob/main/packages/og/docs/migrating-existing-projects.md">Read the migration guide <span>↗</span></a>
         </section>

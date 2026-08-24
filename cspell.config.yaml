@@ -22,6 +22,7 @@ words:
   - monorepos
   - prerendered
   - prerenders
+  - referrerpolicy
   - Resvg
   - Roadscore
   - SARIF
@@ -31,10 +32,15 @@ words:
   - santi020k
   - Starlight
   - structured
+  - subpaths
+  - nosniff
+  - viewbox
   - worktree
   - WebP
   - wght
 ignorePaths:
+  - .wrangler/**
+  - apps/web/.wrangler/**
   - .astro/**
   - .turbo/**
   - coverage/**

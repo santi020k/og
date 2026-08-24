@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm run generate:og && astro check && astro build",
+    "build": "pnpm run generate:og && astro check && astro build && pnpm run build:functions",
+    "build:functions": "wrangler pages functions build functions --outdir .wrangler/functions --project-directory .",
     "clean": "node scripts/clean.mjs",
     "dev": "pnpm run generate:og && astro dev",
     "generate:og": "node ../../packages/og/dist/cli.js generate",

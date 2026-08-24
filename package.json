@@ -6,7 +6,7 @@
   "scripts": {
     "build": "turbo run build",
     "clean": "turbo run clean && rm -rf .turbo",
-    "deploy:web": "pnpm run build && wrangler pages deploy apps/web/dist --project-name=santi020k-og --branch=main",
+    "deploy:web": "pnpm run build && wrangler pages deploy dist --cwd apps/web --project-name=santi020k-og --branch=main",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "lint:spell": "cspell \"**\" --gitignore --cache --show-suggestions --show-context",

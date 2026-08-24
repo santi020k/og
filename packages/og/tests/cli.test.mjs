@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -167,7 +168,7 @@ test('prints machine-readable generation and migration reports', async () => {
     const generation = JSON.parse(generated.stdout)
     const report = JSON.parse(migrated.stdout)
 
-    assert.equal(generation.version, '0.7.0')
+    assert.equal(generation.version, '0.8.0')
 
     assert.equal(generation.total, 2)
 
@@ -270,6 +271,44 @@ test('audits a built site with JSON and SARIF output', async () => {
     assert.equal(path.basename(JSON.parse(configured.stdout).directory), 'dist')
   } finally {
     await rm(root, { force: true, recursive: true })
+  }
+})
+
+test('inspects localhost metadata with machine-readable output', async () => {
+  const server = createServer((_request, response) => {
+    response.writeHead(200, { 'content-type': 'text/html' })
+
+    response.end('<!doctype html><html lang="en"><head><title>Local project</title></head><body><h1>Local</h1></body></html>')
+  })
+
+  await new Promise((resolve, reject) => {
+    server.once('error', reject)
+
+    server.listen(0, '127.0.0.1', resolve)
+  })
+
+  try {
+    const address = server.address()
+
+    assert.ok(address && typeof address !== 'string')
+
+    const result = await run(
+      process.execPath,
+      [path.resolve('dist/cli.js'), 'inspect', `http://127.0.0.1:${address.port}`, '--json'],
+      process.cwd()
+    )
+
+    assert.equal(result.code, 1, result.stderr)
+
+    const inspection = JSON.parse(result.stdout)
+
+    assert.equal(inspection.metadata.title, 'Local project')
+
+    assert.equal(inspection.finalUrl, `http://127.0.0.1:${address.port}/`)
+
+    assert.ok(inspection.summary.error > 0)
+  } finally {
+    await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()))
   }
 })
 
