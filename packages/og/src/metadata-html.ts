@@ -12,7 +12,9 @@ export const renderMetaTags = (tags: readonly MetadataTag[]): string => tags.map
   if (tag.tag === 'title') return `<title>${escapeHtml(tag.content)}</title>`
 
   if (tag.tag === 'link') {
-    return `<link rel="${tag.rel}" href="${escapeHtml(tag.href)}">`
+    const hreflang = tag.hreflang ? ` hreflang="${escapeHtml(tag.hreflang)}"` : ''
+
+    return `<link rel="${tag.rel}"${hreflang} href="${escapeHtml(tag.href)}">`
   }
 
   const key = tag.property ? `property="${escapeHtml(tag.property)}"` : `name="${escapeHtml(tag.name ?? '')}"`

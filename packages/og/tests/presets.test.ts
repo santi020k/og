@@ -1,4 +1,6 @@
+import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
@@ -77,6 +79,111 @@ describe('preset renderer', () => {
 
     await expect(readFile(path.join(root, 'public/og/index.svg'), 'utf8'))
       .resolves.toContain('Hello')
+  })
+
+  it('supports a typed trusted decoration slot without replacing the preset renderer', async () => {
+    interface DecoratedCard extends PresetCardData {
+      metric: number
+    }
+
+    const renderer = createPresetRenderer<DecoratedCard>({
+      decoration: (data, _context, decoration) => (
+        `<g data-accent="${decoration.accent}"><text>${data.metric}</text></g>`
+      ),
+      theme: { accent: '#ff3366' }
+    })
+
+    const output = await renderer({ metric: 42, title: 'Typed decoration' }, {
+      format: 'svg',
+      height: 630,
+      outputPath: '/tmp/decorated.svg',
+      root: '/tmp',
+      width: 1200
+    })
+
+    expect(output).toContain('<g data-accent="#ff3366"><text>42</text></g>')
+  })
+
+  it('downloads pinned remote images once into a verified content-addressed cache', async () => {
+    const root = await createRoot()
+
+    const image = await sharp({
+      create: { background: '#ff3366', channels: 3, height: 32, width: 32 }
+    }).png().toBuffer()
+
+    const wrongType = Buffer.from('not an image')
+    const sha256 = createHash('sha256').update(image).digest('hex')
+    let requests = 0
+
+    const server = createServer((request, response) => {
+      requests += 1
+
+      if (request.url === '/wrong') {
+        response.writeHead(200, { 'content-type': 'text/plain' })
+
+        response.end(wrongType)
+
+        return
+      }
+
+      response.writeHead(200, { 'content-length': image.byteLength, 'content-type': 'image/png' })
+
+      response.end(image)
+    })
+
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject)
+
+      server.listen(0, '127.0.0.1', resolve)
+    })
+
+    try {
+      const address = server.address()
+
+      if (!address || typeof address === 'string') throw new Error('Expected a TCP test server address.')
+
+      const url = `http://127.0.0.1:${address.port}/cover.png`
+      const renderer = createPresetRenderer({ remoteImages: { cacheDirectory: '.cache/remote' } })
+
+      const context = {
+        format: 'svg' as const,
+        height: 630,
+        outputPath: path.join(root, 'card.svg'),
+        root,
+        width: 1200
+      }
+
+      const data = { image: { sha256, type: 'image/png' as const, url }, title: 'Pinned image' }
+      const first = await renderer(data, context)
+      const second = await renderer(data, context)
+
+      expect(first).toContain('data:image/png;base64,')
+
+      expect(second).toBe(first)
+
+      expect(requests).toBe(1)
+
+      await expect(readFile(path.join(root, '.cache/remote', `${sha256}.png`))).resolves.toEqual(image)
+
+      await expect(renderer({ image: url, title: 'Unpinned image' }, context))
+        .rejects.toThrow('must use a pinned')
+
+      await expect(renderer({
+        image: {
+          sha256: createHash('sha256').update(wrongType).digest('hex'),
+          type: 'image/png',
+          url: `http://127.0.0.1:${address.port}/wrong`
+        },
+        title: 'Wrong type'
+      }, context)).rejects.toThrow('type mismatch')
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close(error => {
+          if (error) reject(error)
+          else resolve()
+        })
+      })
+    }
   })
 
   it('reports preset usage independently from public cache keys', async () => {
@@ -194,6 +301,36 @@ draft: true
         variant: 'article'
       },
       output: 'blog--hello.webp'
+    })
+  })
+
+  it('preserves pinned remote cover descriptors from frontmatter', async () => {
+    const root = await createRoot()
+    const content = path.join(root, 'content')
+    const sha256 = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+
+    await mkdir(content)
+
+    await writeFile(path.join(content, 'remote.md'), `---
+title: Remote cover
+cover:
+  url: https://cdn.example.com/cover.png
+  type: image/png
+  sha256: ${sha256}
+---
+`)
+
+    const cards = await collectContentCards({
+      coverFields: ['cover'],
+      directory: 'content',
+      resolveCover: true,
+      root
+    })
+
+    expect(cards[0]?.data.image).toEqual({
+      sha256,
+      type: 'image/png',
+      url: 'https://cdn.example.com/cover.png'
     })
   })
 

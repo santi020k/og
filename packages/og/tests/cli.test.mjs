@@ -167,7 +167,7 @@ test('prints machine-readable generation and migration reports', async () => {
     const generation = JSON.parse(generated.stdout)
     const report = JSON.parse(migrated.stdout)
 
-    assert.equal(generation.version, '0.6.0')
+    assert.equal(generation.version, '0.7.0')
 
     assert.equal(generation.total, 2)
 
@@ -224,6 +224,12 @@ test('audits a built site with JSON and SARIF output', async () => {
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite"}</script>
 </head><body><h1>Example</h1></body></html>`)
 
+    await writeFile(path.join(root, 'og.audit.config.mjs'), `export default {
+  directory: 'dist',
+  siteUrl: 'https://example.com',
+}
+`)
+
     const cli = path.resolve('dist/cli.js')
 
     const json = await run(
@@ -249,19 +255,25 @@ test('audits a built site with JSON and SARIF output', async () => {
       root
     )
 
+    const configured = await run(process.execPath, [cli, 'audit', '--json'], root)
+
     assert.equal(json.code, 0, json.stderr)
 
     assert.equal(sarif.code, 0, sarif.stderr)
 
+    assert.equal(configured.code, 0, configured.stderr)
+
     assert.equal(JSON.parse(json.stdout).passed, true)
 
     assert.equal(JSON.parse(sarif.stdout).version, '2.1.0')
+
+    assert.equal(path.basename(JSON.parse(configured.stdout).directory), 'dist')
   } finally {
     await rm(root, { force: true, recursive: true })
   }
 })
 
-test('upgrades pnpm catalogs and release-age exclusions', async () => {
+test('upgrades nested workspace manifests, pnpm catalogs, and release-age exclusions', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'santi-og-cli-upgrade-'))
 
   try {
@@ -269,7 +281,14 @@ test('upgrades pnpm catalogs and release-age exclusions', async () => {
       devDependencies: { '@santi020k/og': 'catalog:' }
     }, null, 2)}\n`)
 
-    await writeFile(path.join(root, 'pnpm-workspace.yaml'), `packages: []
+    await mkdir(path.join(root, 'apps', 'docs'), { recursive: true })
+
+    await writeFile(path.join(root, 'apps', 'docs', 'package.json'), `${JSON.stringify({
+      devDependencies: { '@santi020k/og': '0.3.0' }
+    }, null, 2)}\n`)
+
+    await writeFile(path.join(root, 'pnpm-workspace.yaml'), `packages:
+  - apps/*
 minimumReleaseAge: 1440
 catalog:
   '@santi020k/og': 0.3.0
@@ -290,6 +309,14 @@ catalog:
     assert.match(upgraded, /minimumReleaseAgeExclude:\n {2}- ["']@santi020k\/og["']/)
 
     assert.match(await readFile(path.join(root, 'package.json'), 'utf8'), /"catalog:"/)
+
+    assert.match(await readFile(path.join(root, 'apps', 'docs', 'package.json'), 'utf8'), /"@santi020k\/og": "0\.4\.0"/)
+
+    assert.deepEqual(JSON.parse(result.stdout).changes.map(change => change.file), [
+      'apps/docs/package.json',
+      'pnpm-workspace.yaml',
+      'pnpm-workspace.yaml'
+    ])
   } finally {
     await rm(root, { force: true, recursive: true })
   }

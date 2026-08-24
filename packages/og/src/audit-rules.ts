@@ -1,4 +1,4 @@
-import { glob, readFile } from 'node:fs/promises'
+import { access, glob, readFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import type {
@@ -36,8 +36,25 @@ export interface RedirectsAuditRuleOptions {
   severity?: AuditSeverity
 }
 
+export interface LlmsAuditRuleOptions {
+  /** Compatibility copies that must exactly match the index file. */
+  compatibilityFiles?: readonly string[]
+  /** Full aggregated Markdown file. Set false to skip. Defaults to llms-full.txt. */
+  fullFile?: false | string
+  /** Compact link index. Defaults to llms.txt. */
+  indexFile?: string
+  /** Map an indexable page to its published Markdown path. Return undefined to skip a route. */
+  markdownPath?: (page: AuditedPage) => string | undefined
+  /** Require each Markdown page heading in the full file. */
+  requireFullHeadings?: boolean
+  /** Require each Markdown path in the compact index. */
+  requireIndexLinks?: boolean
+  severity?: AuditSeverity
+}
+
 export interface StandardAuditRulesOptions {
   alternates?: AlternateLinksAuditRuleOptions | false
+  llms?: LlmsAuditRuleOptions | false
   redirects?: RedirectsAuditRuleOptions | false
   robots?: RobotsAuditRuleOptions | false
   sitemap?: SitemapAuditRuleOptions | false
@@ -81,6 +98,127 @@ const decodeXml = (value: string): string => value
   .replaceAll('&gt;', '>')
   .replaceAll('&quot;', '"')
   .replaceAll('&apos;', '\'')
+
+const fileExists = async (file: string): Promise<boolean> => {
+  try {
+    await access(file)
+
+    return true
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false
+
+    throw error
+  }
+}
+
+const defaultMarkdownPath = (page: AuditedPage): string | undefined => {
+  if (page.route === '/') return undefined
+
+  return `${page.route.replace(/^\/+|\/+$/gu, '')}.md`
+}
+
+const safeSiteFile = (directory: string, configured: string): string => {
+  const file = path.resolve(directory, configured)
+  const relative = path.relative(directory, file)
+
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error(`Audit file must stay inside the built site: ${configured}`)
+  }
+
+  return file
+}
+
+/** Verify llms.txt, compatibility copies, per-route Markdown, and an optional full aggregate. */
+export const createLlmsAuditRule = (
+  options: LlmsAuditRuleOptions = {}
+): AuditSiteRule => async context => {
+  const indexName = options.indexFile ?? 'llms.txt'
+  const fullName = options.fullFile === false ? undefined : options.fullFile ?? 'llms-full.txt'
+  const fullLabel = fullName ?? 'llms-full.txt'
+  const indexFile = safeSiteFile(context.directory, indexName)
+  const severity = options.severity ?? 'warning'
+
+  if (!await fileExists(indexFile)) {
+    return [issue(indexFile, '/', 'missing-llms-index', `Missing AI-readable index: ${indexName}`, severity)]
+  }
+
+  const index = await readFile(indexFile, 'utf8')
+  const issues: AuditIssue[] = []
+  const fullFile = fullName ? safeSiteFile(context.directory, fullName) : undefined
+  const full = fullFile && await fileExists(fullFile) ? await readFile(fullFile, 'utf8') : undefined
+
+  if (fullFile && full === undefined) {
+    issues.push(issue(fullFile, '/', 'missing-llms-full', `Missing AI-readable aggregate: ${fullLabel}`, severity))
+  }
+
+  for (const compatibilityName of options.compatibilityFiles ?? []) {
+    const compatibilityFile = safeSiteFile(context.directory, compatibilityName)
+
+    if (!await fileExists(compatibilityFile)) {
+      issues.push(issue(
+        compatibilityFile,
+        '/',
+        'missing-llms-compatibility-file',
+        `Missing AI-readable compatibility file: ${compatibilityName}`,
+        severity
+      ))
+    } else if (await readFile(compatibilityFile, 'utf8') !== index) {
+      issues.push(issue(
+        compatibilityFile,
+        '/',
+        'llms-compatibility-mismatch',
+        `${compatibilityName} must exactly match ${indexName}.`,
+        severity
+      ))
+    }
+  }
+
+  const markdownPath = options.markdownPath ?? defaultMarkdownPath
+
+  for (const page of context.pages.filter(candidate => candidate.indexable)) {
+    const configuredPath = markdownPath(page)
+
+    if (!configuredPath) continue
+
+    const relativePath = configuredPath.replace(/^\/+/, '')
+    const markdownFile = safeSiteFile(context.directory, relativePath)
+
+    if (!await fileExists(markdownFile)) {
+      issues.push(issue(page.file, page.route, 'missing-route-markdown', `Missing route Markdown: /${relativePath}`, severity))
+
+      continue
+    }
+
+    if ((options.requireIndexLinks ?? true) && !index.includes(`/${relativePath}`)) {
+      issues.push(issue(
+        indexFile,
+        page.route,
+        'missing-llms-index-link',
+        `${indexName} does not link to /${relativePath}.`,
+        severity
+      ))
+    }
+
+    if (full !== undefined && (options.requireFullHeadings ?? true)) {
+      const markdown = await readFile(markdownFile, 'utf8')
+      const heading = /^#\s+(.+)$/mu.exec(markdown)?.[1]?.trim()
+
+      if (!heading) {
+        issues.push(issue(markdownFile, page.route, 'missing-markdown-title', 'Route Markdown has no level-one heading.', severity))
+      } else if (!full.includes(`# ${heading}\n`) && !full.endsWith(`# ${heading}`)) {
+        issues.push(issue(
+          fullFile ?? context.directory,
+          page.route,
+          'missing-llms-full-page',
+          `${fullLabel} does not include the heading from /${relativePath}.`,
+          severity
+        ))
+      }
+    }
+  }
+
+  return issues
+}
 
 /** Verify that sitemap XML files cover the built site's indexable routes. */
 export const createSitemapAuditRule = (
@@ -377,7 +515,7 @@ export const createRedirectsAuditRule = (
   return issues
 }
 
-/** Opt into the standard sitemap, robots, alternate-link, and redirect rule bundle. */
+/** Opt into the standard sitemap, robots, alternate-link, redirect, and optional llms rule bundle. */
 export const standardAuditRules = (
   options: StandardAuditRulesOptions = {}
 ): StandardAuditRules => ({
@@ -385,6 +523,7 @@ export const standardAuditRules = (
     ...(options.sitemap === false ? [] : [createSitemapAuditRule(options.sitemap)]),
     ...(options.robots === false ? [] : [createRobotsAuditRule(options.robots)]),
     ...(options.alternates === false ? [] : [createAlternateLinksAuditRule(options.alternates)]),
-    ...(options.redirects === false ? [] : [createRedirectsAuditRule(options.redirects)])
+    ...(options.redirects === false ? [] : [createRedirectsAuditRule(options.redirects)]),
+    ...(options.llms ? [createLlmsAuditRule(options.llms)] : [])
   ]
 })

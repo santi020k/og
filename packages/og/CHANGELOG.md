@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.0 - 2026-08-24
+
+- Add portable hreflang alternates, locale-matrix helpers, and Next.js language alternate output.
+- Add Fetch-compatible runtime image responses for prerendered or on-demand framework routes.
+- Add pinned remote preset images with verified content-addressed caching and a typed SVG decoration
+  slot for product-specific visuals.
+- Add reusable audit config files, `llms.txt` and per-route Markdown auditing, and grouped audit
+  summaries.
+- Add Event, FAQPage, ImageObject, Offer, and WebPage Schema.org recipes.
+- Upgrade nested npm, Yarn, and pnpm workspace manifests in addition to root manifests and pnpm
+  catalogs.
+
 ## 0.6.0 - 2026-08-24
 
 - Add an official Starlight metadata head adapter with deterministic route-to-image mapping.

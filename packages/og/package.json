@@ -1,6 +1,6 @@
 {
   "name": "@santi020k/og",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Generate deterministic Open Graph images with reusable presets or project-owned renderers.",
   "type": "module",
   "sideEffects": false,
@@ -20,6 +20,10 @@
     "./audit": {
       "types": "./dist/audit.d.ts",
       "default": "./dist/audit.js"
+    },
+    "./audit/config": {
+      "types": "./dist/audit-config.d.ts",
+      "default": "./dist/audit-config.js"
     },
     "./audit/rules": {
       "types": "./dist/audit-rules.d.ts",
@@ -41,9 +45,17 @@
       "types": "./dist/metadata-next.d.ts",
       "default": "./dist/metadata-next.js"
     },
+    "./locales": {
+      "types": "./dist/locales.d.ts",
+      "default": "./dist/locales.js"
+    },
     "./presets": {
       "types": "./dist/presets.d.ts",
       "default": "./dist/presets.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "default": "./dist/runtime.js"
     },
     "./sharp": {
       "types": "./dist/renderers/sharp.d.ts",

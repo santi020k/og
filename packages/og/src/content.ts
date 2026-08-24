@@ -4,7 +4,8 @@ import path from 'node:path'
 import { parse as parseYaml } from 'yaml'
 
 import { pathnameOutput } from './composition.js'
-import type { PresetCardData } from './presets.js'
+import type { PresetCardData, PresetImage } from './presets.js'
+import type { PresetRemoteImageType } from './remote-image.js'
 import type { Awaitable, OgCard, OgRouteDescriptor, OgSourceCollection } from './types.js'
 
 export interface ContentEntry {
@@ -80,6 +81,24 @@ export interface GroupArchiveOptions<T extends PresetCardData> {
 
 const markdownPattern = /\.mdx?$/u
 const defaultIncludes = ['**/*.md', '**/*.mdx'] as const
+
+const remoteImageTypes = new Set<PresetRemoteImageType>([
+  'image/avif',
+  'image/gif',
+  'image/jpeg',
+  'image/png',
+  'image/svg+xml',
+  'image/webp'
+])
+
+const isRemoteImage = (value: unknown): value is Exclude<PresetImage, string> => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+
+  const candidate = value as Readonly<Record<string, unknown>>
+
+  return typeof candidate.url === 'string' && typeof candidate.sha256 === 'string' &&
+    typeof candidate.type === 'string' && remoteImageTypes.has(candidate.type as PresetRemoteImageType)
+}
 
 const collectFiles = async (
   directory: string,
@@ -169,9 +188,11 @@ const defaultData = async (
 
   const cover = coverFields
     .map(field => getFrontmatterValue(entry, field))
-    .find((value): value is string => typeof value === 'string' && value.length > 0)
+    .find((value): value is PresetImage => (
+      typeof value === 'string' ? value.length > 0 : isRemoteImage(value)
+    ))
 
-  const image = resolveCover ? await resolveContentAsset(entry, cover) : cover
+  const image = resolveCover && typeof cover === 'string' ? await resolveContentAsset(entry, cover) : cover
 
   return {
     ...(image ? { image } : {}),

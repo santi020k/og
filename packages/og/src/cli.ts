@@ -5,8 +5,9 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 
-import { auditSite, auditToSarif } from './audit.js'
-import { standardAuditRules } from './audit-rules.js'
+import { auditSite, auditToSarif, summarizeAuditIssues } from './audit.js'
+import type { AuditConfig } from './audit-config.js'
+import { createLlmsAuditRule, standardAuditRules } from './audit-rules.js'
 import { compare } from './compare.js'
 import { generate } from './generate.js'
 import { createMigrationReport } from './report.js'
@@ -24,6 +25,12 @@ const CONFIG_NAMES = [
   'scripts/generate-og-images.mjs'
 ] as const
 
+const AUDIT_CONFIG_NAMES = [
+  'og.audit.config.mjs',
+  'og.audit.config.js',
+  'scripts/og.audit.config.mjs'
+] as const
+
 const toUnknown = (value: unknown): unknown => value
 
 const help = `\
@@ -35,13 +42,13 @@ Usage:
   santi-og generate [options]
   santi-og check [options]
   santi-og compare [options]
-  santi-og audit --site <directory> [options]
+  santi-og audit [--site <directory>] [options]
   santi-og init [options]
   santi-og migrate --report [options]
   santi-og upgrade [options]
 
 Options:
-  --config <path>       Config file or package directory (default: discover config)
+  --config <path>       Generation or audit config file/directory (default: discover config)
   --concurrency <n>     Active renders, or "auto"
   --force               Regenerate every card
   --clean               Remove outputs for cards deleted from the config
@@ -54,6 +61,7 @@ Options:
   --max-image-bytes <n> Fail social images larger than this byte count
   --unique-images       Require distinct social-image bytes for every route
   --standards           Audit sitemap, robots, hreflang alternates, and redirects
+  --llms                Audit llms.txt, llms-full.txt, and route Markdown coverage
   --threshold <ratio>   Maximum changed-pixel ratio accepted by compare
   --report              Analyze a config without changing consumer code
   --root <path>         Project root for upgrade (default: current directory)
@@ -134,6 +142,53 @@ const loadConfig = async (configPath: string): Promise<OgConfig> => {
 
   const configDirectory = path.dirname(configPath)
   const config = candidate as OgConfig
+
+  return {
+    ...config,
+    root: path.resolve(configDirectory, config.root ?? '.')
+  }
+}
+
+const findAuditConfig = async (requested: string | undefined): Promise<string | undefined> => {
+  const base = path.resolve(requested ?? '.')
+
+  if (requested) {
+    try {
+      if ((await stat(base)).isFile()) return base
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+
+      throw new Error(`Audit config does not exist: ${base}`, { cause: error })
+    }
+  }
+
+  for (const name of AUDIT_CONFIG_NAMES) {
+    const candidate = path.resolve(base, name)
+
+    if (await exists(candidate)) return candidate
+  }
+
+  if (requested) throw new Error(`No audit config found in ${base}.`)
+
+  return undefined
+}
+
+const loadAuditConfig = async (configPath: string): Promise<AuditConfig> => {
+  const imported = toUnknown(await import(pathToFileURL(configPath).href))
+
+  if (typeof imported !== 'object' || imported === null) {
+    throw new TypeError(`${configPath} must export an audit config.`)
+  }
+
+  const namespace = imported as Record<string, unknown>
+  const candidate = namespace.default ?? namespace.config
+
+  if (typeof candidate !== 'object' || candidate === null || Array.isArray(candidate)) {
+    throw new TypeError(`${configPath} must default-export an audit config.`)
+  }
+
+  const config = candidate as AuditConfig
+  const configDirectory = path.dirname(configPath)
 
   return {
     ...config,
@@ -338,6 +393,7 @@ const executeUpgrade = async (root: string | undefined, version: string | undefi
 }
 
 const executeAudit = async (options: {
+  config: string | undefined
   directory: string | undefined
   json: boolean
   manifest: string | undefined
@@ -345,12 +401,17 @@ const executeAudit = async (options: {
   root: string | undefined
   sarif: boolean
   siteUrl: string | undefined
+  llms: boolean
   standards: boolean
   uniqueImages: boolean
 }): Promise<void> => {
-  if (!options.directory) throw new Error('The audit command requires --site <directory>.')
-
   if (options.json && options.sarif) throw new Error('Use either --json or --sarif, not both.')
+
+  const configPath = await findAuditConfig(options.config)
+  const configured = configPath ? await loadAuditConfig(configPath) : undefined
+  const directory = options.directory ?? configured?.directory
+
+  if (!directory) throw new Error('The audit command requires --site <directory> or an audit config directory.')
 
   const maxImageBytes = options.maxImageBytes === undefined ? undefined : Number(options.maxImageBytes)
 
@@ -358,13 +419,20 @@ const executeAudit = async (options: {
     throw new Error('--max-image-bytes must be a positive integer.')
   }
 
+  const siteRules = [
+    ...configured?.siteRules ?? [],
+    ...(options.standards ? standardAuditRules().siteRules : []),
+    ...(options.llms ? [createLlmsAuditRule()] : [])
+  ]
+
   const result = await auditSite({
-    directory: options.directory,
+    ...configured,
+    directory,
     ...(options.manifest ? { manifest: options.manifest } : {}),
     ...(maxImageBytes ? { maxImageBytes } : {}),
-    requireUniqueImages: options.uniqueImages,
+    requireUniqueImages: options.uniqueImages || configured?.requireUniqueImages === true,
     ...(options.root ? { root: options.root } : {}),
-    ...(options.standards ? standardAuditRules() : {}),
+    siteRules,
     ...(options.siteUrl ? { siteUrl: options.siteUrl } : {})
   })
 
@@ -375,6 +443,16 @@ const executeAudit = async (options: {
   } else {
     for (const item of result.issues) {
       process.stdout.write(`  ${item.severity.padEnd(7)} ${item.route} [${item.code}] ${item.message}\n`)
+    }
+
+    const summaries = summarizeAuditIssues(result.issues)
+
+    if (summaries.length > 0) {
+      process.stdout.write('Root causes:\n')
+
+      for (const summary of summaries) {
+        process.stdout.write(`  ${summary.severity.padEnd(7)} [${summary.code}] ${summary.count} finding(s) across ${summary.routes.length} route(s)\n`)
+      }
     }
 
     process.stdout.write(
@@ -395,6 +473,7 @@ const run = async (): Promise<void> => {
       force: { short: 'f', type: 'boolean' },
       help: { short: 'h', type: 'boolean' },
       json: { type: 'boolean' },
+      llms: { type: 'boolean' },
       manifest: { type: 'string' },
       'max-image-bytes': { type: 'string' },
       report: { type: 'boolean' },
@@ -438,8 +517,10 @@ const run = async (): Promise<void> => {
 
   if (command === 'audit') {
     await executeAudit({
+      config: parsed.values.config,
       directory: parsed.values.site,
       json: parsed.values.json ?? false,
+      llms: parsed.values.llms ?? false,
       manifest: parsed.values.manifest,
       maxImageBytes: parsed.values['max-image-bytes'],
       root: parsed.values.root,

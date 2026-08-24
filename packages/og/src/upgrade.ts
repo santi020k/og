@@ -1,11 +1,11 @@
-import { access, readFile, writeFile } from 'node:fs/promises'
+import { access, glob, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
 
 const dependencyFields = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'] as const
 
-interface UpgradeChange {
+export interface UpgradeChange {
   file: string
   from: string
   to: string
@@ -21,7 +21,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> => (
   typeof value === 'object' && value !== null && !Array.isArray(value)
 )
 
-const updatePackageManifest = (manifest: Record<string, unknown>, version: string): UpgradeChange[] => {
+const updatePackageManifest = (
+  manifest: Record<string, unknown>,
+  version: string,
+  file: string
+): UpgradeChange[] => {
   const changes: UpgradeChange[] = []
 
   for (const field of dependencyFields) {
@@ -31,17 +35,21 @@ const updatePackageManifest = (manifest: Record<string, unknown>, version: strin
 
     const previous = dependencies['@santi020k/og']
 
-    if (previous.startsWith('catalog:')) continue
+    if (previous.startsWith('catalog:') || previous === version) continue
 
     dependencies['@santi020k/og'] = version
 
-    changes.push({ file: 'package.json', from: previous, to: version })
+    changes.push({ file, from: previous, to: version })
   }
 
   return changes
 }
 
-const updateYamlCatalogs = (value: unknown, version: string, changes: UpgradeChange[]): void => {
+const updateYamlCatalogs = (
+  value: unknown,
+  version: string,
+  changes: UpgradeChange[]
+): void => {
   if (Array.isArray(value)) {
     value.forEach(entry => {
       updateYamlCatalogs(entry, version, changes)
@@ -54,6 +62,8 @@ const updateYamlCatalogs = (value: unknown, version: string, changes: UpgradeCha
 
   for (const [key, entry] of Object.entries(value)) {
     if (key === '@santi020k/og' && typeof entry === 'string') {
+      if (entry === version) continue
+
       value[key] = version
 
       changes.push({ file: 'pnpm-workspace.yaml', from: entry, to: version })
@@ -91,6 +101,52 @@ const packageManager = async (
   return 'npm'
 }
 
+const workspacePatterns = (manifest: Record<string, unknown>): string[] => {
+  const workspaces = manifest.workspaces
+
+  if (Array.isArray(workspaces)) return workspaces.filter((value): value is string => typeof value === 'string')
+
+  if (!isRecord(workspaces) || !Array.isArray(workspaces.packages)) return []
+
+  return workspaces.packages.filter((value): value is string => typeof value === 'string')
+}
+
+const packagePattern = (pattern: string): string => {
+  const normalized = pattern.replace(/^\.\//u, '').replace(/\/+$/u, '')
+
+  if (!normalized || normalized === '.') return 'package.json'
+
+  return normalized.endsWith('package.json') ? normalized : `${normalized}/package.json`
+}
+
+const discoverPackageManifests = async (
+  root: string,
+  patterns: readonly string[]
+): Promise<string[]> => {
+  const files = new Set(['package.json'])
+
+  const excluded = patterns
+    .filter(pattern => pattern.startsWith('!'))
+    .map(pattern => packagePattern(pattern.slice(1)))
+
+  for (const pattern of patterns.filter(candidate => !candidate.startsWith('!'))) {
+    for await (const file of glob(packagePattern(pattern), {
+      cwd: root,
+      exclude: ['**/node_modules/**', ...excluded]
+    })) {
+      files.add(file.split(path.sep).join('/'))
+    }
+  }
+
+  return [...files].sort((left, right) => {
+    if (left === 'package.json') return -1
+
+    if (right === 'package.json') return 1
+
+    return left.localeCompare(right)
+  })
+}
+
 export const upgradeProject = async (parameters: {
   root?: string
   version: string
@@ -101,41 +157,66 @@ export const upgradeProject = async (parameters: {
 
   if (!isRecord(manifest)) throw new TypeError(`${packagePath} must contain a JSON object.`)
 
-  const changes = updatePackageManifest(manifest, parameters.version)
   const manager = await packageManager(manifest, root)
-
-  if (changes.length > 0) await writeFile(packagePath, `${JSON.stringify(manifest, null, 2)}\n`)
+  let pnpmWorkspace: Record<string, unknown> | undefined
+  const patterns = workspacePatterns(manifest)
 
   if (manager === 'pnpm') {
-    const workspacePath = path.join(root, 'pnpm-workspace.yaml')
-
     try {
-      const workspace: unknown = parseYaml(await readFile(workspacePath, 'utf8'))
+      const parsed: unknown = parseYaml(await readFile(path.join(root, 'pnpm-workspace.yaml'), 'utf8'))
 
-      if (isRecord(workspace)) {
-        updateYamlCatalogs(workspace.catalog, parameters.version, changes)
+      if (isRecord(parsed)) {
+        pnpmWorkspace = parsed
 
-        updateYamlCatalogs(workspace.catalogs, parameters.version, changes)
-
-        const excluded = workspace.minimumReleaseAgeExclude
-        const packageFound = changes.length > 0
-
-        if (packageFound && Array.isArray(excluded) && !excluded.includes('@santi020k/og')) {
-          excluded.push('@santi020k/og')
-
-          changes.push({ file: 'pnpm-workspace.yaml', from: '(not excluded)', to: '@santi020k/og' })
-        } else if (packageFound && workspace.minimumReleaseAge !== undefined && excluded === undefined) {
-          workspace.minimumReleaseAgeExclude = ['@santi020k/og']
-
-          changes.push({ file: 'pnpm-workspace.yaml', from: '(not excluded)', to: '@santi020k/og' })
-        }
-
-        if (changes.some(change => change.file === 'pnpm-workspace.yaml')) {
-          await writeFile(workspacePath, stringifyYaml(workspace, { lineWidth: 100 }))
+        if (Array.isArray(parsed.packages)) {
+          patterns.push(...parsed.packages.filter((value): value is string => typeof value === 'string'))
         }
       }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
+  }
+
+  const changes: UpgradeChange[] = []
+  const packageFiles = await discoverPackageManifests(root, patterns)
+
+  for (const relative of packageFiles) {
+    const filePath = path.resolve(root, relative)
+    const packageManifest: unknown = relative === 'package.json' ? manifest : JSON.parse(await readFile(filePath, 'utf8'))
+
+    if (!isRecord(packageManifest)) throw new TypeError(`${filePath} must contain a JSON object.`)
+
+    const manifestChanges = updatePackageManifest(packageManifest, parameters.version, relative)
+
+    if (manifestChanges.length === 0) continue
+
+    changes.push(...manifestChanges)
+
+    await writeFile(filePath, `${JSON.stringify(packageManifest, null, 2)}\n`)
+  }
+
+  if (pnpmWorkspace) {
+    const workspacePath = path.join(root, 'pnpm-workspace.yaml')
+
+    updateYamlCatalogs(pnpmWorkspace.catalog, parameters.version, changes)
+
+    updateYamlCatalogs(pnpmWorkspace.catalogs, parameters.version, changes)
+
+    const excluded = pnpmWorkspace.minimumReleaseAgeExclude
+    const packageFound = changes.length > 0
+
+    if (packageFound && Array.isArray(excluded) && !excluded.includes('@santi020k/og')) {
+      excluded.push('@santi020k/og')
+
+      changes.push({ file: 'pnpm-workspace.yaml', from: '(not excluded)', to: '@santi020k/og' })
+    } else if (packageFound && pnpmWorkspace.minimumReleaseAge !== undefined && excluded === undefined) {
+      pnpmWorkspace.minimumReleaseAgeExclude = ['@santi020k/og']
+
+      changes.push({ file: 'pnpm-workspace.yaml', from: '(not excluded)', to: '@santi020k/og' })
+    }
+
+    if (changes.some(change => change.file === 'pnpm-workspace.yaml')) {
+      await writeFile(workspacePath, stringifyYaml(pnpmWorkspace, { lineWidth: 100 }))
     }
   }
 

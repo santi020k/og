@@ -6,7 +6,7 @@ import SiteFooter from '../../components/SiteFooter.astro'
 import SiteHeader from '../../components/SiteHeader.astro'
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
-const description = 'Use @santi020k/og v0.6 site definitions, framework adapters, reusable audit rules, extensible JSON-LD, content helpers, visual presets, and deterministic output management.'
+const description = 'Use @santi020k/og v0.7 locale metadata, runtime responses, pinned remote images, reusable audits, JSON-LD recipes, visual presets, and deterministic output management.'
 
 const sections = [
   ['quick-start', 'Quick start'],
@@ -252,14 +252,14 @@ const cacheExample = `export default defineConfig({
 const jsonResultExample = `{
   "command": "generate",
   "config": "/project/og.config.mjs",
-  "cacheKey": "preset-v1",
+  "cacheKey": "preset-v2",
   "checked": false,
   "generated": ["home.webp"],
   "skipped": ["docs.webp"],
   "cleaned": [],
   "stale": [],
   "total": 2,
-  "version": "0.6.0",
+  "version": "0.7.0",
   "elapsedMilliseconds": 184
 }`
 
@@ -270,7 +270,7 @@ pnpm exec santi-og compare --threshold 0.01
 pnpm exec santi-og audit --site dist --site-url https://example.com --sarif
 pnpm exec santi-og audit --site dist --site-url https://example.com --standards
 pnpm exec santi-og migrate --report --json
-pnpm exec santi-og upgrade --to 0.6.0`
+pnpm exec santi-og upgrade --to 0.7.0`
 ---
 
 <BaseLayout title="Documentation" description={description}>
@@ -287,7 +287,7 @@ pnpm exec santi-og upgrade --to 0.6.0`
         <p>{description} Start with a useful visual default and customize only what your project needs.</p>
       </div>
       <div class="docs-meta">
-        <span><b>v0.6.0</b> Current docs</span>
+        <span><b>v0.7.0</b> Current docs</span>
         <span><b>Node.js 22.18+</b> Runtime</span>
         <span><b>4 presets</b> Included</span>
       </div>
@@ -307,7 +307,7 @@ pnpm exec santi-og upgrade --to 0.6.0`
           <p class="docs-lead">Use a complete preset for conventional social cards, share page data with portable metadata, connect Markdown or MDX directly, or keep full visual control with a custom renderer.</p>
           <div class="choice-grid">
             <article><span>Fastest</span><h3>Preset config</h3><p>Brand, theme, route data, and optional images. No renderer file.</p></article>
-            <article><span>Every framework</span><h3>Shared metadata</h3><p>One page definition for the image, canonical URL, Open Graph, X, HTML, and Next.js.</p></article>
+            <article><span>Every framework</span><h3>Shared metadata</h3><p>One page definition for the image, canonical URL, hreflang, Open Graph, X, HTML, and Next.js.</p></article>
             <article><span>Full control</span><h3>Custom renderer</h3><p>Sharp, Satori, workers, or an existing encoded image function.</p></article>
           </div>
         </section>
@@ -342,14 +342,14 @@ pnpm exec santi-og upgrade --to 0.6.0`
           <PresetGallery />
           <div class="docs-note"><strong>Actual package output.</strong><p>These four images are rendered by this site’s <code>og.config.mjs</code> during every build.</p></div>
           <h3>Theme and card overrides</h3>
-          <p>Set <code>preset.brand</code>, <code>preset.theme</code>, and <code>preset.variant</code> once. Override <code>accent</code>, <code>brand</code>, <code>domain</code>, <code>image</code>, or <code>variant</code> on individual cards.</p>
+          <p>Set <code>preset.brand</code>, <code>preset.theme</code>, and <code>preset.variant</code> once. Override <code>accent</code>, <code>brand</code>, <code>domain</code>, <code>image</code>, or <code>variant</code> on individual cards. Pinned remote images use verified content-addressed caching, while the typed decoration slot adds a trusted product visual without replacing the preset shell.</p>
           <p>Generated preset SVG uses portable fill and stroke opacity attributes instead of CSS <code>rgba()</code> colors, improving compatibility with SVG validators and consumer tooling.</p>
         </section>
 
         <section id="metadata">
           <span class="docs-section-number">03</span>
           <h2>Page metadata from the same source</h2>
-          <p><code>definePageMetadata</code> keeps the title, description, route, and social image together. Derive a card with an explicit renderer mapping, portable tag descriptors, escaped HTML, or a Next.js Metadata API object without adding a framework runtime.</p>
+          <p><code>definePageMetadata</code> keeps the title, description, route, localized alternates, and social image together. Derive a card with an explicit renderer mapping, portable tag descriptors, escaped HTML, or a Next.js Metadata API object without adding a framework runtime. Locale-matrix helpers reuse the same hreflang expectations in final-output audits.</p>
           <pre><code>{metadataExample}</code></pre>
           <p>The helpers resolve absolute canonical and image URLs, infer image MIME types, include dimensions and alternative text, remove canonical fragments, and validate empty text or invalid dimensions. Article pages can add dates, authors, section, and tags.</p>
           <h3>Metadata functions</h3>
@@ -407,8 +407,8 @@ pnpm exec santi-og upgrade --to 0.6.0`
           <h2>One site contract, extensible schemas, and final-output auditing</h2>
           <p><code>defineSite</code> binds metadata defaults once and derives pages, cards, HTML, Astro head output, and Next.js metadata. Route manifests connect generated cards to built routes, including the JSON-LD <code>@type</code> values each route requires.</p>
           <pre><code>{siteAuditExample}</code></pre>
-          <p>Built-in JSON-LD recipes cover websites, articles, software, breadcrumbs, collections, people, and organizations. Use <code>extendSchema</code> for extra Schema.org properties or <code>defineSchemaRecipe</code> for FAQs, products, events, recipes, and domain-specific scenarios. Unknown vocabulary remains valid.</p>
-          <p><code>santi-og audit</code> checks final HTML, canonicals, Open Graph and X metadata, h1 and language contracts, image bytes, dimensions and MIME declarations, duplicates, manifest coverage, and route-specific schemas. Add <code>--standards</code> for sitemap, robots, hreflang, and redirect rules; use <code>--json</code> or <code>--sarif</code> for CI.</p>
+          <p>Built-in JSON-LD recipes cover websites, web pages, articles, software, events, FAQs, offers, images, breadcrumbs, collections, people, and organizations. Use <code>extendSchema</code> or <code>defineSchemaRecipe</code> for additional Schema.org vocabulary and domain-specific scenarios.</p>
+          <p><code>santi-og audit</code> checks final HTML, canonicals, Open Graph and X metadata, h1 and language contracts, image bytes, dimensions and MIME declarations, duplicates, manifest coverage, and route-specific schemas. Add <code>--standards</code> for sitemap, robots, hreflang, and redirects; add <code>--llms</code> for AI-readable Markdown coverage. Reusable audit configs align local and CI policy, and human reports group repeated root causes.</p>
         </section>
 
         <section id="content">
@@ -483,7 +483,7 @@ pnpm exec santi-og upgrade --to 0.6.0`
             theme="santi020k"
             wrap={false}
           />
-          <p>Existing functions that already return PNG, WebP, JPEG, or AVIF bytes can use <code>createEncodedRenderer</code>. Large collections can use <code>defineWorkerRenderer</code> or <code>createSatoriWorkerRenderer</code> with bounded automatic concurrency.</p>
+          <p>Existing functions that already return PNG, WebP, JPEG, or AVIF bytes can use <code>createEncodedRenderer</code>. Large collections can use <code>defineWorkerRenderer</code> or <code>createSatoriWorkerRenderer</code> with bounded automatic concurrency. <code>createImageResponse</code> wraps the same renderer for prerendered or on-demand Fetch-compatible routes.</p>
           <div class="docs-note"><strong>Hybrid projects are supported.</strong><p>Use a preset config for social cards while independent video, diagram, or specialized media scripts retain their custom renderer and own only their outputs.</p></div>
         </section>
 
@@ -513,7 +513,7 @@ pnpm exec santi-og upgrade --to 0.6.0`
             <div><span>Cleanup</span><strong>Tracked only</strong><p>Only obsolete outputs recorded by the previous manifest are removed.</p></div>
           </div>
           <h3>Semantic cache revisions</h3>
-          <p>Set <code>cache.key</code> when renderer behavior changes without a directly tracked source change. The key participates in every fingerprint and appears in human-readable and JSON summaries. Preset configs supply their own <code>preset-v1</code> key automatically.</p>
+          <p>Set <code>cache.key</code> when renderer behavior changes without a directly tracked source change. The key participates in every fingerprint and appears in human-readable and JSON summaries. Preset configs supply their own <code>preset-v2</code> key automatically.</p>
           <pre><code>{cacheExample}</code></pre>
           <p>Output and manifest paths remain constrained to the project root. Commit the manifest with committed images; ignore both when images are CI-only artifacts. Use <code>santi-og check</code> for verification and <code>santi-og compare</code> for non-destructive visual reports.</p>
         </section>
@@ -583,7 +583,7 @@ pnpm exec santi-og upgrade --to 0.6.0`
 
         <section class="docs-next">
           <span class="kicker">Migration guide</span>
-          <h2>Replace repeated renderers and validators with portable v0.6 workflows.</h2>
+          <h2>Replace repeated renderers and validators with portable v0.7 workflows.</h2>
           <p>The multi-project migration keeps route data and project-specific contracts local while moving rendering, metadata, schema recipes, archives, and final-output auditing into the library.</p>
           <a class="button" href="https://github.com/santi020k/og/blob/main/packages/og/docs/migrating-existing-projects.md">Read the migration guide <span>↗</span></a>
         </section>

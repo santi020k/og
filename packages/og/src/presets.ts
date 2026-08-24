@@ -4,7 +4,12 @@ import path from 'node:path'
 import { createSharpRenderer, type SharpRendererOptions } from './renderers/sharp.js'
 import { defineConfig } from './config.js'
 import { markPresetRenderer } from './preset-marker.js'
-import type { OgConfig, OgRenderContext, OgRenderer } from './types.js'
+import {
+  materializeRemoteImage,
+  type PresetRemoteImage,
+  type PresetRemoteImageOptions
+} from './remote-image.js'
+import type { Awaitable, OgConfig, OgRenderContext, OgRenderer } from './types.js'
 import {
   loadPresetFont,
   type PresetTypographyOptions,
@@ -16,9 +21,11 @@ export type PresetVariant = 'article' | 'docs' | 'product' | 'simple'
 
 export interface PresetBrand {
   domain?: string
-  logo?: string
+  logo?: PresetImage
   name: string
 }
+
+export type PresetImage = PresetRemoteImage | string
 
 export interface PresetCardData {
   accent?: string
@@ -27,7 +34,7 @@ export interface PresetCardData {
   description?: string
   domain?: string
   eyebrow?: string
-  image?: string
+  image?: PresetImage
   title: string
   variant?: PresetVariant
 }
@@ -40,8 +47,21 @@ export interface PresetTheme {
   panel: string
 }
 
-export interface PresetRendererOptions {
+export interface PresetDecorationContext {
+  accent: string
+  theme: Readonly<PresetTheme>
+}
+
+export interface PresetRendererOptions<T extends PresetCardData = PresetCardData> {
   brand?: PresetBrand
+  /** Trusted SVG fragment rendered in the visual slot instead of the built-in decoration. */
+  decoration?: (
+    data: Readonly<T>,
+    context: Readonly<OgRenderContext>,
+    decoration: Readonly<PresetDecorationContext>
+  ) => Awaitable<string | undefined>
+  /** Opt into content-addressed downloads for remote image descriptors. */
+  remoteImages?: false | PresetRemoteImageOptions
   sharp?: Omit<SharpRendererOptions<never>, 'renderSvg'>
   theme?: Partial<PresetTheme>
   typography?: PresetTypographyOptions
@@ -50,7 +70,7 @@ export interface PresetRendererOptions {
 
 export interface PresetConfig<T extends PresetCardData = PresetCardData>
   extends Omit<OgConfig<T>, 'renderer'> {
-  preset?: PresetRendererOptions
+  preset?: PresetRendererOptions<T>
 }
 
 const DEFAULT_THEME: PresetTheme = {
@@ -90,8 +110,26 @@ const exists = async (filePath: string): Promise<boolean> => {
   }
 }
 
-const resolveImage = async (source: string | undefined, context: OgRenderContext): Promise<string | undefined> => {
-  if (!source || /^(?:data:|https?:\/\/)/u.test(source)) return source
+const resolveImage = async (
+  source: PresetImage | undefined,
+  context: OgRenderContext,
+  remoteImages: PresetRendererOptions['remoteImages']
+): Promise<string | undefined> => {
+  if (!source) return undefined
+
+  if (typeof source !== 'string') {
+    if (!remoteImages) {
+      throw new Error('Remote preset image descriptors require preset.remoteImages to be configured.')
+    }
+
+    source = await materializeRemoteImage(source, context.root, remoteImages)
+  }
+
+  if (source.startsWith('data:')) return source
+
+  if (/^https?:\/\//u.test(source)) {
+    throw new Error('Remote preset image URLs must use a pinned { url, sha256, type } descriptor.')
+  }
 
   const filePath = path.isAbsolute(source) ? source : path.resolve(context.root, source)
 
@@ -171,18 +209,18 @@ const variantDecoration = (variant: PresetVariant, accent: string): string => {
     </g>`
 }
 
-const renderPresetSvg = async (
-  data: PresetCardData,
+const renderPresetSvg = async <T extends PresetCardData>(
+  data: T,
   context: OgRenderContext,
-  options: PresetRendererOptions
+  options: PresetRendererOptions<T>
 ): Promise<string> => {
   const variant = data.variant ?? options.variant ?? 'simple'
   const theme = { ...DEFAULT_THEME, ...options.theme }
   const accent = data.accent ?? theme.accent
   const brand = { name: 'Open Graph', ...options.brand, ...data.brand }
   const domain = data.domain ?? brand.domain
-  const image = await resolveImage(data.image, context)
-  const logo = await resolveImage(brand.logo, context)
+  const image = await resolveImage(data.image, context, options.remoteImages)
+  const logo = await resolveImage(brand.logo, context, options.remoteImages)
   const hasVisual = Boolean(image) || variant !== 'simple'
   const font = await loadPresetFont(options.typography, context.root)
   const maximumTitleWidth = hasVisual ? 650 : Math.min(990, context.width - 144)
@@ -231,7 +269,8 @@ const renderPresetSvg = async (
     `<g clip-path="url(#visual)"><rect x="778" y="156" width="350" height="352" rx="40" fill="${theme.panel}"/><image href="${escapeXml(image)}" x="778" y="156" width="350" height="352" preserveAspectRatio="xMidYMid slice"/></g><rect x="778" y="156" width="350" height="352" rx="40" fill="none" stroke="white" stroke-opacity="0.16"/>` :
     ''
 
-  const decoration = image || !hasVisual ? visual : variantDecoration(variant, accent)
+  const customDecoration = await options.decoration?.(data, context, { accent, theme })
+  const decoration = customDecoration ?? (image || !hasVisual ? visual : variantDecoration(variant, accent))
 
   return `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${context.width} ${context.height}" role="img" aria-label="${escapeXml(data.title)}">
@@ -266,7 +305,7 @@ const renderPresetSvg = async (
 }
 
 export const createPresetRenderer = <T extends PresetCardData = PresetCardData>(
-  options: PresetRendererOptions = {}
+  options: PresetRendererOptions<T> = {}
 ): OgRenderer<T> => markPresetRenderer(createSharpRenderer<T>({
   ...options.sharp,
   renderSvg: (data, context) => renderPresetSvg(data, context, options),
@@ -280,12 +319,18 @@ export const definePresetConfig = <T extends PresetCardData = PresetCardData>(
   const configuredCache = shared.cache
   const configuredSources = typeof configuredCache === 'object' ? configuredCache.sources : undefined
   const typographyFile = preset?.typography?.file
+  const configuredLogo = preset?.brand?.logo
+  const remoteLogoDigest = typeof configuredLogo === 'object' ? configuredLogo.sha256.toLowerCase() : undefined
 
   const cache = configuredCache === false ?
     false :
     {
       ...(typeof configuredCache === 'object' ? configuredCache : {}),
-      key: `preset-v${PRESET_VERSION}${typeof configuredCache === 'object' && configuredCache.key ? `:${configuredCache.key}` : ''}`,
+      key: [
+        `preset-v${PRESET_VERSION}`,
+        remoteLogoDigest ? `remote-logo-${remoteLogoDigest}` : undefined,
+        typeof configuredCache === 'object' ? configuredCache.key : undefined
+      ].filter(Boolean).join(':'),
       ...(typographyFile ?
         {
           sources: async () => [
@@ -299,4 +344,10 @@ export const definePresetConfig = <T extends PresetCardData = PresetCardData>(
   return defineConfig({ ...shared, cache, renderer: createPresetRenderer<T>(preset) })
 }
 
+export type {
+  PresetRemoteImage,
+  PresetRemoteImageOptions,
+  PresetRemoteImageType
+} from './remote-image.js'
+export { materializeRemoteImage } from './remote-image.js'
 export type { PresetTypographyOptions } from './typography.js'
