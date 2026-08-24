@@ -34,6 +34,6 @@ const nameTags = tags.flatMap(tag => tag.tag === 'meta' && tag.name ? [tag] : []
 ---
 
 {titleTags.map(tag => tag.tag === 'title' && <title>{tag.content}</title>)}
-{linkTags.map(tag => tag.tag === 'link' && <link rel={tag.rel} href={tag.href} />)}
+{linkTags.map(tag => tag.tag === 'link' && <link rel={tag.rel} href={tag.href} hreflang={tag.hreflang} />)}
 {propertyTags.map(tag => <meta property={tag.property} content={tag.content} />)}
 {nameTags.map(tag => <meta name={tag.name} content={tag.content} />)}

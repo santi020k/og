@@ -67,6 +67,47 @@ export interface CollectionSchemaInput extends ThingSchemaInput {
   items: readonly (JsonLdNode | ThingSchemaInput)[]
 }
 
+export interface ImageObjectSchemaInput {
+  caption?: string
+  contentUrl?: string | URL
+  height?: number
+  id?: string
+  url: string | URL
+  width?: number
+}
+
+export interface OfferSchemaInput {
+  availability?: string | URL
+  currency?: string
+  id?: string
+  price?: number | string
+  url?: string | URL
+}
+
+export interface WebPageSchemaInput extends ThingSchemaInput {
+  description?: string
+  image?: JsonLdNode | string | URL
+  inLanguage?: string
+  isPartOf?: JsonLdNode
+  type?: string
+}
+
+export interface EventSchemaInput extends ThingSchemaInput {
+  description?: string
+  endDate?: Date | string
+  eventStatus?: string | URL
+  image?: JsonLdNode | string | URL
+  inLanguage?: string
+  location?: JsonLdNode
+  organizer?: JsonLdNode | readonly JsonLdNode[]
+  startDate: Date | string
+}
+
+export interface FaqQuestion {
+  answer: string
+  question: string
+}
+
 const schemaContext = 'https://schema.org'
 
 const urlString = (value: string | URL | undefined): string | undefined => (
@@ -194,6 +235,83 @@ export const softwareApplicationSchema = (
   ...(input.offers ? { offers: input.offers } : {}),
   ...(input.operatingSystem ? { operatingSystem: input.operatingSystem } : {}),
   ...(input.softwareVersion ? { softwareVersion: input.softwareVersion } : {}),
+  ...extension
+})
+
+export const imageObjectSchema = (
+  input: ImageObjectSchemaInput,
+  extension: JsonLdExtension = {}
+): JsonLdNode => defineSchema({
+  '@type': 'ImageObject',
+  ...(input.id ? { '@id': input.id } : {}),
+  url: urlString(input.url),
+  ...(input.contentUrl ? { contentUrl: urlString(input.contentUrl) } : {}),
+  ...(input.caption ? { caption: input.caption } : {}),
+  ...(input.height === undefined ? {} : { height: input.height }),
+  ...(input.width === undefined ? {} : { width: input.width }),
+  ...extension
+})
+
+export const offerSchema = (
+  input: OfferSchemaInput,
+  extension: JsonLdExtension = {}
+): JsonLdNode => defineSchema({
+  '@type': 'Offer',
+  ...(input.id ? { '@id': input.id } : {}),
+  ...(input.availability ? { availability: urlString(input.availability) } : {}),
+  ...(input.currency ? { priceCurrency: input.currency } : {}),
+  ...(input.price === undefined ? {} : { price: input.price }),
+  ...(input.url ? { url: urlString(input.url) } : {}),
+  ...extension
+})
+
+export const webPageSchema = (
+  input: WebPageSchemaInput,
+  extension: JsonLdExtension = {}
+): JsonLdNode => defineSchema({
+  '@type': input.type ?? 'WebPage',
+  ...(input.id ? { '@id': input.id } : {}),
+  name: input.name,
+  ...(input.url ? { url: urlString(input.url) } : {}),
+  ...(input.description ? { description: input.description } : {}),
+  ...(input.image ? { image: input.image instanceof URL ? input.image.href : input.image } : {}),
+  ...(input.inLanguage ? { inLanguage: input.inLanguage } : {}),
+  ...(input.isPartOf ? { isPartOf: input.isPartOf } : {}),
+  ...extension
+})
+
+export const eventSchema = (
+  input: EventSchemaInput,
+  extension: JsonLdExtension = {}
+): JsonLdNode => defineSchema({
+  '@type': 'Event',
+  ...(input.id ? { '@id': input.id } : {}),
+  name: input.name,
+  startDate: dateString(input.startDate),
+  ...(input.url ? { url: urlString(input.url) } : {}),
+  ...(input.description ? { description: input.description } : {}),
+  ...(input.endDate ? { endDate: dateString(input.endDate) } : {}),
+  ...(input.eventStatus ? { eventStatus: urlString(input.eventStatus) } : {}),
+  ...(input.image ? { image: input.image instanceof URL ? input.image.href : input.image } : {}),
+  ...(input.inLanguage ? { inLanguage: input.inLanguage } : {}),
+  ...(input.location ? { location: input.location } : {}),
+  ...(input.organizer ? { organizer: input.organizer } : {}),
+  ...extension
+})
+
+export const faqSchema = (
+  questions: readonly FaqQuestion[],
+  extension: JsonLdExtension = {}
+): JsonLdNode => defineSchema({
+  '@type': 'FAQPage',
+  mainEntity: questions.map(question => defineSchema({
+    '@type': 'Question',
+    acceptedAnswer: defineSchema({
+      '@type': 'Answer',
+      text: question.answer
+    }),
+    name: question.question
+  })),
   ...extension
 })
 

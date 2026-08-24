@@ -2,20 +2,28 @@ version: "0.2"
 language: en,en-GB
 useGitignore: true
 words:
+  - aaronmgz
   - apos
   - astrojs
   - avif
   - commitprompt
+  - Coolstead
   - Contrac
   - esbuild
   - Eleventy
+  - Difftale
   - frontmatter
   - fontkit
   - Hrefs
   - lock-in
+  - llms
+  - memudo
   - Molina
   - monorepos
+  - prerendered
+  - prerenders
   - Resvg
+  - Roadscore
   - SARIF
   - santi
   - Santi
@@ -23,6 +31,7 @@ words:
   - santi020k
   - Starlight
   - structured
+  - worktree
   - WebP
   - wght
 ignorePaths:

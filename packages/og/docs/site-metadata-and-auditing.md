@@ -39,6 +39,35 @@ export const html = site.html(docs)
 export const nextMetadata = site.next(docs)
 ```
 
+## Localized alternates
+
+Use one locale matrix for portable metadata and built-site expectations:
+
+```ts
+import { createLocaleAlternates, createLocaleAuditHrefs } from '@santi020k/og/locales'
+
+const localeOptions = {
+  defaultLanguage: 'es',
+  locales: [
+    { language: 'es', prefix: '' },
+    { language: 'en', prefix: 'en' },
+  ],
+  siteUrl: 'https://example.com',
+}
+
+const page = site.page({
+  alternates: createLocaleAlternates('/en/docs/', localeOptions),
+  description: 'Localized documentation.',
+  pathname: '/en/docs/',
+  title: 'Documentation',
+})
+
+const expectedHrefs = createLocaleAuditHrefs(localeOptions)
+```
+
+The metadata HTML renderer emits hreflang links, the Next.js adapter emits
+`alternates.languages`, and `expectedHrefs` plugs into `createAlternateLinksAuditRule`.
+
 ## Astro head integration
 
 Astro projects can render the portable descriptors without maintaining a conditional meta-tag
@@ -98,8 +127,9 @@ public URLs.
 
 ## Extensible JSON-LD recipes
 
-Built-in recipes cover websites, articles, software applications, breadcrumbs, collections,
-people, and organizations. Compose them into a graph when nodes share stable `@id` references:
+Built-in recipes cover websites, web pages, articles, software applications, events, FAQs, offers,
+images, breadcrumbs, collections, people, and organizations. Compose them into a graph when nodes
+share stable `@id` references:
 
 ```ts
 import { articleSchema, composeJsonLd, organizationSchema, serializeJsonLd } from '@santi020k/og/schema'
@@ -194,7 +224,29 @@ santi-og audit --site dist --site-url https://example.com --manifest public/og/m
 santi-og audit --site dist --site-url https://example.com --json
 santi-og audit --site dist --site-url https://example.com --sarif > results.sarif
 santi-og audit --site dist --site-url https://example.com --standards
+santi-og audit --site dist --site-url https://example.com --llms
 ```
+
+To share the same policy between local development and CI, create `og.audit.config.mjs`:
+
+```js
+import { standardAuditRules } from '@santi020k/og/audit/rules'
+import { defineAuditConfig } from '@santi020k/og/audit/config'
+
+export default defineAuditConfig({
+  directory: 'dist',
+  manifest: 'public/og/manifest.json',
+  siteUrl: 'https://example.com',
+  ...standardAuditRules({
+    sitemap: { reportOrphans: true },
+    alternates: { requireXDefault: true },
+  }),
+})
+```
+
+Run `santi-og audit` with no repeated path or policy flags. CLI flags override scalar config values;
+`--standards` and `--llms` append their rules to configured `siteRules`. Human output also groups
+repeated issue codes into a compact root-cause summary after the detailed findings.
 
 It checks titles, descriptions, robots, canonicals, Open Graph, X metadata, canonical-route
 consistency, local image existence and dimensions, duplicate titles, optional duplicate images,
@@ -208,6 +260,7 @@ redirect rules together. Each rule is independently configurable:
 import { auditSite } from '@santi020k/og/audit'
 import {
   createAlternateLinksAuditRule,
+  createLlmsAuditRule,
   createRobotsAuditRule,
   createSitemapAuditRule,
 } from '@santi020k/og/audit/rules'
@@ -222,6 +275,7 @@ const result = await auditSite({
       expectedSitemaps: ['https://example.com/sitemap.xml'],
     }),
     createAlternateLinksAuditRule({ requireXDefault: true }),
+    createLlmsAuditRule({ compatibilityFiles: ['llm.txt'] }),
   ],
 })
 ```

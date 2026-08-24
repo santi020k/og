@@ -47,7 +47,7 @@ export interface NextTwitterMetadata {
 }
 
 export interface NextCompatibleMetadata {
-  alternates: { canonical: string }
+  alternates: { canonical: string, languages?: Readonly<Record<string, string>> }
   authors?: { name: string }[]
   description: string
   keywords?: string[]
@@ -119,7 +119,14 @@ export const toNextMetadata = (
     }
 
   return {
-    alternates: { canonical: metadata.canonical },
+    alternates: {
+      canonical: metadata.canonical,
+      ...(metadata.alternates.length > 0 ?
+        {
+          languages: Object.fromEntries(metadata.alternates.map(alternate => [alternate.language, alternate.href]))
+        } :
+        {})
+    },
     ...(metadata.authors.length > 0 ? { authors: metadata.authors.map(name => ({ name })) } : {}),
     description: metadata.description,
     ...(metadata.keywords.length > 0 ? { keywords: [...metadata.keywords] } : {}),

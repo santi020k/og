@@ -76,6 +76,13 @@ export interface SiteAuditResult {
   warnings: number
 }
 
+export interface AuditIssueSummary {
+  code: string
+  count: number
+  routes: readonly string[]
+  severity: AuditSeverity
+}
+
 interface ParsedHtml {
   h1Count: number
   language?: string
@@ -530,3 +537,42 @@ export const auditToSarif = (result: SiteAuditResult): SarifLog => ({
   }],
   version: '2.1.0'
 })
+
+/** Group repeated findings into a compact root-cause summary for CI and human reports. */
+export const summarizeAuditIssues = (
+  issues: readonly AuditIssue[]
+): AuditIssueSummary[] => {
+  const summaries = new Map<string, { code: string, count: number, routes: Set<string>, severity: AuditSeverity }>()
+
+  for (const item of issues) {
+    const key = `${item.severity}:${item.code}`
+
+    const current = summaries.get(key) ?? {
+      code: item.code,
+      count: 0,
+      routes: new Set<string>(),
+      severity: item.severity
+    }
+
+    current.count += 1
+
+    current.routes.add(item.route)
+
+    summaries.set(key, current)
+  }
+
+  const sorted = [...summaries.values()]
+    .map(summary => ({
+      code: summary.code,
+      count: summary.count,
+      routes: [...summary.routes].sort(),
+      severity: summary.severity
+    }))
+    .sort((left, right) => {
+      if (left.severity !== right.severity) return left.severity === 'error' ? -1 : 1
+
+      return right.count - left.count || left.code.localeCompare(right.code)
+    })
+
+  return sorted
+}

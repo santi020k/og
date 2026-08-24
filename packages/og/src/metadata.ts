@@ -26,6 +26,13 @@ export interface PageImageMetadata {
   width?: number
 }
 
+export interface PageAlternateMetadata {
+  /** Absolute or site-relative alternate URL. */
+  href: string | URL
+  /** BCP 47 language tag or x-default. */
+  language: string
+}
+
 export interface PageRobotsMetadata {
   follow?: boolean
   index?: boolean
@@ -42,6 +49,8 @@ export interface PageTwitterMetadata {
 
 /** Portable page information shared by HTML metadata and social-card generation. */
 export interface PageMetadata {
+  /** Language-specific page URLs emitted as hreflang links and Next.js alternates. */
+  alternates?: readonly PageAlternateMetadata[]
   article?: PageArticleMetadata
   authors?: readonly string[]
   canonical?: string | URL
@@ -78,6 +87,7 @@ export interface ResolvedPageImageMetadata {
 }
 
 export interface ResolvedPageMetadata {
+  alternates: readonly Readonly<{ href: string, language: string }>[]
   alternateLocales: readonly string[]
   article?: PageArticleMetadata
   authors: readonly string[]
@@ -101,7 +111,8 @@ export interface MetadataTitleTag {
 
 export interface MetadataLinkTag {
   href: string
-  rel: 'canonical'
+  hreflang?: string
+  rel: 'alternate' | 'canonical'
   tag: 'link'
 }
 
@@ -251,6 +262,22 @@ export const resolvePageMetadata = (
   const type = page.type ?? (page.article ? 'article' : 'website')
   const twitter = { ...options.twitter, ...page.twitter }
   const image = resolveImage(page, options, siteUrl)
+  const languages = new Set<string>()
+
+  const alternates = (page.alternates ?? []).map(alternate => {
+    assertText(alternate.language, 'alternates.language')
+
+    const language = alternate.language.toLowerCase()
+
+    if (languages.has(language)) throw new Error(`Duplicate alternate language: ${alternate.language}`)
+
+    languages.add(language)
+
+    return {
+      href: absoluteUrl(alternate.href, siteUrl, 'alternates.href').href,
+      language: alternate.language
+    }
+  })
 
   canonical.hash = ''
 
@@ -263,6 +290,7 @@ export const resolvePageMetadata = (
   if (twitter.site) assertText(twitter.site, 'twitter.site')
 
   return {
+    alternates,
     alternateLocales: page.alternateLocales ?? [],
     ...(page.article ? { article: page.article } : {}),
     authors: page.authors ?? page.article?.authors ?? [],
@@ -314,6 +342,10 @@ export const createMetaTags = (
     { href: metadata.canonical, rel: 'canonical', tag: 'link' },
     metaName('robots', robotsContent(metadata.robots))
   ]
+
+  for (const alternate of metadata.alternates) {
+    tags.push({ href: alternate.href, hreflang: alternate.language, rel: 'alternate', tag: 'link' })
+  }
 
   for (const author of metadata.authors) tags.push(metaName('author', author))
 

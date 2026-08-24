@@ -1,65 +1,66 @@
-# Improvements for the next version
+# Migration learnings
 
 These findings come from migrating Lumen, commitprompt, Cult, PostLens, workspace-organizer,
 santi020k-theme, Astro Doctor, eslint-config-basic, santi020k.com, and ContracTrack.
 
-## Completed in 0.2
+Completed release work is tracked in [`packages/og/CHANGELOG.md`](packages/og/CHANGELOG.md).
 
-- Output-content digests, transitive renderer-source discovery, source globs, and source callbacks.
-- Encoded-renderer and legacy-card adapters.
-- Output aliases, named output directories, copied assets, and tracked-only cleanup.
-- Non-destructive image comparison and bounded automatic concurrency.
-- Package config discovery and the Satori worker renderer helper.
+## What the consumer migrations taught us
 
-## Completed in 0.3
+### Share mechanics, preserve product policy
 
-- Neutral `simple`, `article`, `docs`, and `product` card presets.
-- Configurable brand, domain, logo, image, palette, accent, and Sharp encoding options.
-- Shared title wrapping, escaping, layout, SVG composition, and raster encoding.
-- Deterministic URL-path output mapping with `pathnameOutput` and `createPathCards`.
-- Astro Markdown/MDX discovery with YAML frontmatter, nested index slugs, draft filtering, and custom
-  data, output, and source callbacks.
-- A preset-based CLI starter that is useful without writing a renderer.
+- The best library boundary is repeated mechanics: parsing built HTML, normalizing routes and URLs,
+  discovering sitemap files, reading robots directives, resolving image outputs, and formatting
+  diagnostics.
+- Product copy, locale topology, required robots directives, exclusions, redirects, and severity
+  choices remain consumer configuration. Moving those policies into the package would make it
+  brand-specific and less reusable.
+- A small callback such as `expectedHrefs(page)` can replace a large validator loop without hiding
+  the site's localization model.
 
-## Completed in 0.4
+### Audit the deployed shape, not only source code
 
-- Portable page definitions that derive cards, Open Graph and X descriptors, escaped HTML, and
-  dependency-free Next.js metadata from the same source.
-- A framework-neutral Markdown/MDX entry point with compatibility aliases for existing Astro
-  consumers.
-- Generic typed `createCards` mapping for data catalogs, derived archives, pagination, and CMS
-  results.
-- First-class multi-format cards and per-format aliases without repeated logical card definitions.
-- Pre-parse include/exclude patterns, custom filters and draft predicates, cover fallbacks, and
-  collection aggregation for Markdown/MDX content.
-- Generator- and preset-version-aware manifests, semantic cache keys, elapsed-time summaries, and
-  documented tracked-manifest workflows.
-- Bundled portable Inter typography, real glyph measurement, safe long-token wrapping, embedded
-  fonts, and SVG-compatible hex-alpha colors.
-- Machine-readable CLI summaries, migration inventory reports, visual-difference thresholds, and a
-  package-manager-aware upgrade command for package manifests and pnpm workspaces.
-- A documented hybrid workflow for preset social cards alongside specialized custom media scripts.
+- Source components do not prove what crawlers receive. Framework defaults, integrations, and
+  rendering order can add, replace, or omit tags, so the reliable boundary is the final built HTML.
+- Route manifests connect generation and auditing: they let the audit verify that every declared
+  social image exists and that pages reference tracked outputs.
+- Site-wide standards do not belong in the per-page audit loop. The `siteRules` extension point
+  keeps one HTML parse per page while allowing sitemap, robots, alternate-link, and redirect checks
+  to operate on the complete route set.
 
-## Findings for a future release
+### Framework adapters should compose with framework output
 
-### Preset typography and layout
+- The Starlight adapter must preserve `route.head`; replacing it would lose canonical links,
+  integration-provided tags, and future framework behavior.
+- Framework-specific runtime imports can fail when a package is linked or packed because optional
+  peer modules resolve from a different package boundary. The adapter therefore depends on
+  Starlight types only and renders the supplied head descriptors itself.
+- Framework frontmatter extensions such as `ogImage` and `ogImageAlt` need an explicit consumer
+  schema. The adapter can support the fields, but it should not silently redefine the framework's
+  content schema.
+- Metadata fallbacks must always be useful and non-empty. A deterministic image path is not enough
+  if a page can still emit an empty description or inaccessible image text.
 
-- Add narrow extension points for preset decorations. Consumers currently choose a complete preset
-  or a complete custom renderer; a safe slot API could cover product screenshots and small diagrams
-  without bringing back full SVG templates.
+### Release and migration discipline matters
 
-### Content adapters
+- Consumer migrations that import a new public subpath cannot be considered complete while they
+  depend on a temporary local link. Publishing first and reinstalling from the registry catches
+  missing package files and export-map mistakes.
+- `publint`, package packing, type checks, final consumer builds, and registry-resolution checks
+  cover different failure modes; none is a complete substitute for the others.
+- Version changes must update the generator constant, cache expectations, CLI result tests,
+  changelog, documentation examples, and consumer lock files together.
+- Package-manager versions are part of the workspace contract. Installing a pnpm 11 workspace with
+  a pnpm 10 store can force a modules-directory rebuild even when application code is correct.
+- Strict zero-warning linting and spell checking caught real release drift, including stale version
+  assertions and undocumented public vocabulary.
 
-- Add optional adapters for Astro's generated content metadata and non-file sources such as a CMS.
-  The v0.3 helper deliberately reads Markdown/MDX directly so it works without an Astro runtime, but
-  consumers with custom slug transforms still need a mapping callback.
-- Define remote-image download and cache semantics before supporting HTTP cover images. Local and
-  data-URL images are dependable today; silently relying on an SVG implementation to fetch remote
-  resources would make builds non-deterministic.
+### Measured result
 
-### Findings from the published 0.3.0 consumer rollout
-
-- Add an optional data-only manifest format for large static route catalogs. Astro Doctor and
-  ContracTrack now have small renderer orchestration, but most of their remaining OG files are long
-  JavaScript arrays containing titles, badges, locale variants, and image paths that could be YAML
-  or JSON validated by the library.
+- Across the ten migrated projects, the shared library now removes approximately **585 net lines**
+  of consumer code compared with the original implementations.
+- The 0.6 audit rules and Starlight adapter removed another **62 net lines** after the 0.5 rollout.
+- The largest focused reductions are 218 net lines in the PostLens SEO validator, 198 in the
+  workspace-organizer validator, and 30 in the eslint-config-basic Starlight head component.
+- Line count is only a proxy. The larger benefit is that fixes to URL normalization, crawler-facing
+  metadata, sitemap coverage, and diagnostic formatting now happen once and reach every consumer.

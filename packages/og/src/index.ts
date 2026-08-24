@@ -2,6 +2,7 @@ export {
   type AuditedAlternateLink,
   type AuditedPage,
   type AuditIssue,
+  type AuditIssueSummary,
   type AuditRule,
   type AuditRuleContext,
   auditSite,
@@ -10,14 +11,17 @@ export {
   auditToSarif,
   type SarifLog,
   type SiteAuditOptions,
-  type SiteAuditResult
-} from './audit.js'
+  type SiteAuditResult,
+  summarizeAuditIssues } from './audit.js'
+export { type AuditConfig, defineAuditConfig } from './audit-config.js'
 export {
   type AlternateLinksAuditRuleOptions,
   createAlternateLinksAuditRule,
+  createLlmsAuditRule,
   createRedirectsAuditRule,
   createRobotsAuditRule,
   createSitemapAuditRule,
+  type LlmsAuditRuleOptions,
   type RedirectsAuditRuleOptions,
   type RobotsAuditRuleOptions,
   type SitemapAuditRuleOptions,
@@ -40,11 +44,23 @@ export {
 export { defineConfig, defineWorkerRenderer } from './config.js'
 export { generate } from './generate.js'
 export {
+  createLocaleAlternates,
+  createLocaleAuditHrefs,
+  type LocaleAlternatesOptions,
+  type LocaleRoute
+} from './locales.js'
+export {
   createPresetRenderer,
   definePresetConfig,
+  materializeRemoteImage,
   type PresetBrand,
   type PresetCardData,
   type PresetConfig,
+  type PresetDecorationContext,
+  type PresetImage,
+  type PresetRemoteImage,
+  type PresetRemoteImageOptions,
+  type PresetRemoteImageType,
   type PresetRendererOptions,
   type PresetTheme,
   type PresetVariant
@@ -59,6 +75,11 @@ export {
   serializeRouteManifest,
   writeRouteManifest
 } from './route-manifest.js'
+export {
+  createImageResponse,
+  type ImageResponseHeaders,
+  type ImageResponseOptions
+} from './runtime.js'
 export { defineSite, type SiteDefinition, type SiteDefinitionOptions } from './site.js'
 export type {
   Awaitable,
@@ -81,5 +102,5 @@ export type {
   OgSourceCollection,
   OgWorkerRenderer
 } from './types.js'
-export { upgradeProject, type UpgradeResult } from './upgrade.js'
+export { type UpgradeChange, upgradeProject, type UpgradeResult } from './upgrade.js'
 export { GENERATOR_VERSION, PRESET_VERSION } from './version.js'
