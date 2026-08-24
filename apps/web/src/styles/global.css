@@ -261,6 +261,7 @@ h1 em, h2 em { color: var(--og-accent); font-style: normal; }
 .checker-input-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 8px; }
 .checker-input-row .ui-input { min-width: 0; }
 .checker-form .ui-field > p { margin: 9px 0 0; color: hsl(var(--ink-muted)); font-size: 12px; }
+.checker-verification { min-height: 65px; margin-top: 18px; }
 .checker-state { display: flex; gap: 12px; align-items: center; padding-top: 22px; color: hsl(var(--ink-soft)); }
 .checker-form-card .ui-alert { margin-top: 22px; }
 .checker-form-card .ui-alert p { margin: 5px 0 0; color: inherit; }

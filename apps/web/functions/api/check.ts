@@ -5,9 +5,7 @@ import {
 
 interface PagesContext {
   env: {
-    CHECKER_RATE_LIMITER?: {
-      limit: (options: { key: string }) => Promise<{ success: boolean }>
-    }
+    TURNSTILE_SECRET_KEY?: string
   }
   request: Request
 }
@@ -20,6 +18,12 @@ interface DnsAnswer {
 interface DnsResponse {
   Answer?: readonly DnsAnswer[]
   Status?: number
+}
+
+interface TurnstileVerification {
+  action?: string
+  hostname?: string
+  success: boolean
 }
 
 const isDnsResponse = (value: unknown): value is DnsResponse => {
@@ -79,6 +83,42 @@ const authorizeHostedUrl = async (url: URL): Promise<void> => {
   for (const address of await dnsAddresses(hostname)) assertPublicInspectionUrl(literalUrl(address))
 }
 
+const isTurnstileVerification = (value: unknown): value is TurnstileVerification => {
+  if (!value || typeof value !== 'object') return false
+
+  const record = value as Readonly<Record<string, unknown>>
+
+  return typeof record.success === 'boolean' &&
+    (record.action === undefined || typeof record.action === 'string') &&
+    (record.hostname === undefined || typeof record.hostname === 'string')
+}
+
+const verifyTurnstile = async (
+  token: string,
+  request: Request,
+  secret: string
+): Promise<boolean> => {
+  const remoteAddress = request.headers.get('cf-connecting-ip')?.trim()
+  const form = new FormData()
+
+  form.set('secret', secret)
+  form.set('response', token)
+  if (remoteAddress) form.set('remoteip', remoteAddress)
+
+  const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    body: form,
+    method: 'POST'
+  })
+
+  if (!response.ok) throw new Error('Turnstile verification is unavailable.')
+
+  const value: unknown = await response.json()
+
+  if (!isTurnstileVerification(value)) throw new Error('Turnstile returned an invalid verification response.')
+
+  return value.success && value.action === 'inspect' && value.hostname === new URL(request.url).hostname
+}
+
 const json = (value: unknown, status = 200, extraHeaders: HeadersInit = {}): Response => Response.json(value, {
   headers: {
     'cache-control': 'no-store',
@@ -98,45 +138,48 @@ export const onRequestPost = async ({ env, request }: PagesContext): Promise<Res
     return json({ error: 'Cross-site inspection requests are not allowed.' }, 403)
   }
 
-  if (!env.CHECKER_RATE_LIMITER) {
+  if (!env.TURNSTILE_SECRET_KEY) {
     return json({ error: 'The hosted checker is temporarily unavailable.' }, 503)
-  }
-
-  const clientAddress = request.headers.get('cf-connecting-ip')?.trim() || 'local-development'
-  let rateLimit: { success: boolean }
-
-  try {
-    rateLimit = await env.CHECKER_RATE_LIMITER.limit({ key: clientAddress })
-  } catch {
-    return json({ error: 'The hosted checker is temporarily unavailable.' }, 503)
-  }
-
-  if (!rateLimit.success) {
-    return json(
-      { error: 'Too many inspections. Wait one minute and try again.' },
-      429,
-      { 'retry-after': '60' }
-    )
   }
 
   const declaredLength = Number(request.headers.get('content-length'))
 
-  if (Number.isFinite(declaredLength) && declaredLength > 1_024) {
+  if (Number.isFinite(declaredLength) && declaredLength > 4_096) {
     return json({ error: 'The request is too large.' }, 413)
   }
 
   let body: unknown
 
   try {
-    body = await request.json()
+    const rawBody = await request.text()
+
+    if (new TextEncoder().encode(rawBody).byteLength > 4_096) {
+      return json({ error: 'The request is too large.' }, 413)
+    }
+
+    body = JSON.parse(rawBody) as unknown
   } catch {
     return json({ error: 'Send a JSON object containing a URL.' }, 400)
   }
 
-  const url = body && typeof body === 'object' && 'url' in body ? (body as { url?: unknown }).url : undefined
+  const bodyRecord = body && typeof body === 'object' ? body as Readonly<Record<string, unknown>> : undefined
+  const turnstileToken = bodyRecord?.turnstileToken
+  const url = bodyRecord?.url
 
   if (typeof url !== 'string' || url.length > 2_048) {
     return json({ error: 'A valid URL is required.' }, 400)
+  }
+
+  if (typeof turnstileToken !== 'string' || turnstileToken.length === 0 || turnstileToken.length > 2_048) {
+    return json({ error: 'Complete the human verification and try again.' }, 403)
+  }
+
+  try {
+    if (!await verifyTurnstile(turnstileToken, request, env.TURNSTILE_SECRET_KEY)) {
+      return json({ error: 'The human verification was rejected. Try again.' }, 403)
+    }
+  } catch {
+    return json({ error: 'The hosted checker is temporarily unavailable.' }, 503)
   }
 
   try {

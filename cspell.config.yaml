@@ -24,6 +24,7 @@ words:
   - prerenders
   - ratelimits
   - referrerpolicy
+  - remoteip
   - Resvg
   - Roadscore
   - SARIF
@@ -34,6 +35,8 @@ words:
   - Starlight
   - structured
   - subpaths
+  - sitekey
+  - unstub
   - nosniff
   - viewbox
   - worktree

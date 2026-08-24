@@ -2,8 +2,8 @@
 
 ## 0.9.0 - 2026-08-24
 
-- Harden the hosted checker with same-origin enforcement, Cloudflare-backed per-client rate limits,
-  stricter DNS response validation, and fail-closed deployment configuration.
+- Harden the hosted checker with same-origin enforcement, server-validated single-use Cloudflare
+  Turnstile tokens, stricter DNS response validation, and fail-closed deployment configuration.
 - Test packed release candidates and published registry artifacts in plain Node.js, Astro, and
   Next.js consumers before completing a release.
 - Upgrade every outdated runtime and development dependency to the latest stable version compatible
