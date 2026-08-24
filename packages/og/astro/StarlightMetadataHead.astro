@@ -1,0 +1,54 @@
+---
+import { pathnameOutput } from '@santi020k/og'
+import { createMetaTags, definePageMetadata } from '@santi020k/og/metadata'
+
+import type { StarlightRouteData } from '@astrojs/starlight/route-data'
+
+const route = Astro.locals.starlightRoute as StarlightRouteData
+const data = route.entry.data as Readonly<Record<string, unknown>>
+const title = typeof data.title === 'string' ? data.title : route.siteTitle
+
+const description = typeof data.description === 'string' && data.description.trim() ?
+  data.description :
+  `${title} documentation.`
+
+const configuredImage = typeof data.ogImage === 'string' ? data.ogImage : undefined
+const image = configuredImage ?? `/og/${pathnameOutput(Astro.url.pathname)}`
+
+const alt = typeof data.ogImageAlt === 'string' ?
+  data.ogImageAlt :
+  `${title} — ${route.siteTitle}`
+
+const generated = createMetaTags(definePageMetadata({
+  description,
+  image: { alt, url: image },
+  pathname: Astro.url.pathname,
+  title
+}), {
+  locale: route.lang.replace('-', '_'),
+  siteName: route.siteTitle,
+  siteUrl: Astro.site ?? Astro.url.origin
+})
+
+const existingProperties = new Set(route.head.flatMap(item => (
+  item.tag === 'meta' && typeof item.attrs?.property === 'string' ? [item.attrs.property] : []
+)))
+
+const existingNames = new Set(route.head.flatMap(item => (
+  item.tag === 'meta' && typeof item.attrs?.name === 'string' ? [item.attrs.name] : []
+)))
+
+const propertyTags = generated.flatMap(tag => tag.tag === 'meta' &&
+  tag.property?.startsWith('og:image') && !existingProperties.has(tag.property) ?
+  [tag] :
+  [])
+
+const nameTags = generated.flatMap(tag => tag.tag === 'meta' &&
+  tag.name?.startsWith('twitter:image') && !existingNames.has(tag.name) ?
+  [tag] :
+  [])
+---
+
+{route.head.map(({ tag: Tag, attrs, content }) => <Tag {...attrs} set:html={content} />)}
+{propertyTags.map(tag => <meta property={tag.property} content={tag.content} />)}
+{nameTags.map(tag => <meta name={tag.name} content={tag.content} />)}

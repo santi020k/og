@@ -1,6 +1,6 @@
 {
   "name": "@santi020k/og",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Generate deterministic Open Graph images with reusable presets or project-owned renderers.",
   "type": "module",
   "sideEffects": false,
@@ -16,6 +16,15 @@
       "default": "./dist/astro.js"
     },
     "./astro/head": "./astro/MetadataHead.astro",
+    "./astro/starlight": "./astro/StarlightMetadataHead.astro",
+    "./audit": {
+      "types": "./dist/audit.d.ts",
+      "default": "./dist/audit.js"
+    },
+    "./audit/rules": {
+      "types": "./dist/audit-rules.d.ts",
+      "default": "./dist/audit-rules.js"
+    },
     "./content": {
       "types": "./dist/content.d.ts",
       "default": "./dist/content.js"

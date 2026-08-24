@@ -6,7 +6,7 @@ import SiteFooter from '../../components/SiteFooter.astro'
 import SiteHeader from '../../components/SiteHeader.astro'
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
-const description = 'Use @santi020k/og v0.5 site definitions, Astro metadata, extensible JSON-LD, built-site audits, content helpers, visual presets, and deterministic output management.'
+const description = 'Use @santi020k/og v0.6 site definitions, framework adapters, reusable audit rules, extensible JSON-LD, content helpers, visual presets, and deterministic output management.'
 
 const sections = [
   ['quick-start', 'Quick start'],
@@ -138,7 +138,8 @@ const jsonLd = serializeJsonLd(articleSchema({
 }))
 
 // Astro: <MetadataHead page={page} site={site.options} />
-// CI: santi-og audit --site dist --site-url https://example.com --manifest dist/og/manifest.json`
+// Starlight: import Head from '@santi020k/og/astro/starlight'
+// CI: santi-og audit --site dist --site-url https://example.com --standards`
 
 const catalogExample = `import { createCards } from '@santi020k/og'
 
@@ -258,7 +259,7 @@ const jsonResultExample = `{
   "cleaned": [],
   "stale": [],
   "total": 2,
-  "version": "0.5.0",
+  "version": "0.6.0",
   "elapsedMilliseconds": 184
 }`
 
@@ -267,8 +268,9 @@ pnpm exec santi-og generate
 pnpm exec santi-og check
 pnpm exec santi-og compare --threshold 0.01
 pnpm exec santi-og audit --site dist --site-url https://example.com --sarif
+pnpm exec santi-og audit --site dist --site-url https://example.com --standards
 pnpm exec santi-og migrate --report --json
-pnpm exec santi-og upgrade --to 0.5.0`
+pnpm exec santi-og upgrade --to 0.6.0`
 ---
 
 <BaseLayout title="Documentation" description={description}>
@@ -285,7 +287,7 @@ pnpm exec santi-og upgrade --to 0.5.0`
         <p>{description} Start with a useful visual default and customize only what your project needs.</p>
       </div>
       <div class="docs-meta">
-        <span><b>v0.5.0</b> Current docs</span>
+        <span><b>v0.6.0</b> Current docs</span>
         <span><b>Node.js 22.18+</b> Runtime</span>
         <span><b>4 presets</b> Included</span>
       </div>
@@ -406,7 +408,7 @@ pnpm exec santi-og upgrade --to 0.5.0`
           <p><code>defineSite</code> binds metadata defaults once and derives pages, cards, HTML, Astro head output, and Next.js metadata. Route manifests connect generated cards to built routes, including the JSON-LD <code>@type</code> values each route requires.</p>
           <pre><code>{siteAuditExample}</code></pre>
           <p>Built-in JSON-LD recipes cover websites, articles, software, breadcrumbs, collections, people, and organizations. Use <code>extendSchema</code> for extra Schema.org properties or <code>defineSchemaRecipe</code> for FAQs, products, events, recipes, and domain-specific scenarios. Unknown vocabulary remains valid.</p>
-          <p><code>santi-og audit</code> checks final HTML, canonicals, Open Graph and X metadata, h1 and language contracts, image bytes, dimensions and MIME declarations, duplicates, manifest coverage, and route-specific schemas. Add <code>--json</code> or <code>--sarif</code> for CI.</p>
+          <p><code>santi-og audit</code> checks final HTML, canonicals, Open Graph and X metadata, h1 and language contracts, image bytes, dimensions and MIME declarations, duplicates, manifest coverage, and route-specific schemas. Add <code>--standards</code> for sitemap, robots, hreflang, and redirect rules; use <code>--json</code> or <code>--sarif</code> for CI.</p>
         </section>
 
         <section id="content">
@@ -581,7 +583,7 @@ pnpm exec santi-og upgrade --to 0.5.0`
 
         <section class="docs-next">
           <span class="kicker">Migration guide</span>
-          <h2>Replace repeated renderers and validators with portable v0.5 workflows.</h2>
+          <h2>Replace repeated renderers and validators with portable v0.6 workflows.</h2>
           <p>The multi-project migration keeps route data and project-specific contracts local while moving rendering, metadata, schema recipes, archives, and final-output auditing into the library.</p>
           <a class="button" href="https://github.com/santi020k/og/blob/main/packages/og/docs/migrating-existing-projects.md">Read the migration guide <span>↗</span></a>
         </section>

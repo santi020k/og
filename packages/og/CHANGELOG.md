@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0 - 2026-08-24
+
+- Add an official Starlight metadata head adapter with deterministic route-to-image mapping.
+- Add opt-in sitemap, robots, hreflang alternate, and redirect audit rules plus the
+  `santi-og audit --standards` bundle.
+
 ## 0.5.0 - 2026-08-24
 
 - Add `defineSite`, an official Astro metadata head component, deterministic route manifests, and
