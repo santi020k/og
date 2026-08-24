@@ -1,8 +1,7 @@
 # Stability and compatibility
 
-`@santi020k/og` 0.9 is the final acceptance release before 1.0. The 0.8 cycle made the compatibility
-boundary explicit; 0.9 verifies that boundary from packed and registry-installed artifacts in real
-framework builds before the first stable major.
+`@santi020k/og` 1.0 establishes the stable public contract after the 0.8 compatibility review and
+the 0.9 acceptance cycle verified packed and registry-installed artifacts in real framework builds.
 
 ## Supported runtime
 
@@ -66,14 +65,13 @@ The stable package subpaths are:
 - Product copy, brand policy, locale topology, redirects, severity choices, and remote image digests
   remain consumer-owned configuration.
 
-## Before 1.0
+## 1.0 acceptance
 
-The 0.9 cycle keeps the export surface frozen, runs the complete suite on Node.js 22 and 24, and
-builds plain Node.js, Astro, and Next.js consumers from both the packed candidate and the published
-registry artifact. The hosted checker is protected by application URL policy, same-origin request
-validation, server-validated single-use Turnstile tokens, and the Workers public-network egress
-boundary.
+The stable export surface is locked by public contract tests. The complete suite runs on Node.js 22
+and 24, and plain Node.js, Astro, and Next.js consumers build from both the packed candidate and the
+published registry artifact. The hosted checker is protected by application URL policy,
+same-origin request validation, server-validated single-use Turnstile tokens, and the Workers
+public-network egress boundary.
 
 The executable acceptance criteria live in [the release checklist](./docs/release-acceptance.md).
-Any required breaking correction discovered during this cycle should ship before 1.0 instead of
-being carried into the stable contract.
+Future changes follow the compatibility and deprecation policy above.

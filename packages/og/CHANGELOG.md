@@ -2,8 +2,14 @@
 
 ## Unreleased
 
+## 1.0.0 - 2026-08-24
+
+- Establish the documented package subpaths, runtime exports, configuration shapes, CLI commands,
+  and machine-readable results as the stable public contract.
 - Add a transparent 0–100 score to hosted, CLI, visual, and JSON inspection results while keeping
   the underlying pass, warning, and error evidence visible.
+- Support the hosted checker during local Astro development while preserving production Turnstile
+  verification requirements.
 
 ## 0.9.0 - 2026-08-24
 

@@ -525,7 +525,7 @@ output. It fails when a card exceeds the accepted difference and always fails fo
 or dimension changes, which cannot be expressed as a pixel ratio. Add `--json` for automation.
 
 `santi-og migrate --report` inventories logical cards, physical outputs, local renderer modules,
-and remaining custom-renderer responsibilities. `santi-og upgrade --to 0.9.0` updates regular
+and remaining custom-renderer responsibilities. `santi-og upgrade --to 1.0.0` updates regular
 dependencies in the root and every declared workspace package, plus pnpm catalogs and release-age
 exclusions; run your package manager install command after reviewing the changes. `generate`,
 `check`, `compare`, `inspect`, `migrate`, and `upgrade` support machine-readable JSON summaries.

@@ -173,5 +173,5 @@ Start with `santi-og migrate --report --json` to inventory the remaining work. R
 `santi-og compare --threshold 0.01` when visual parity is required; it renders in a temporary
 directory and can fail CI when decoded pixel differences exceed the chosen ratio. Missing outputs
 and dimension changes always fail because they have no comparable pixel ratio. Use
-`santi-og upgrade --to 0.9.0` to update root and declared workspace package manifests or pnpm
+`santi-og upgrade --to 1.0.0` to update root and declared workspace package manifests or pnpm
 catalogs, then run the package manager install command yourself.
