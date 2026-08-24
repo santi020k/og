@@ -1,7 +1,8 @@
 # Stability and compatibility
 
-`@santi020k/og` 0.8 is the stabilization release before 1.0. Its purpose is to make the compatibility
-boundary explicit and exercise that boundary in real consumers before the first stable major.
+`@santi020k/og` 0.9 is the final acceptance release before 1.0. The 0.8 cycle made the compatibility
+boundary explicit; 0.9 verifies that boundary from packed and registry-installed artifacts in real
+framework builds before the first stable major.
 
 ## Supported runtime
 
@@ -9,6 +10,18 @@ boundary explicit and exercise that boundary in real consumers before the first 
 - The complete validation suite runs on Node.js 22 and 24.
 - The package uses standard `Response` objects for runtime image routes and does not import a web
   framework at runtime.
+
+## Build-time dependency model
+
+The package intentionally ships Sharp, Satori, Resvg, Fontkit, and the bundled Inter font as regular
+dependencies. The primary workflow installs `@santi020k/og` as a development dependency, generates
+static images before the application build, and deploys only the generated assets. Keeping both
+renderers available makes the CLI, presets, and custom-renderer escape hatches work immediately and
+avoids optional-native-dependency failures across package managers.
+
+These dependencies do not enter a browser bundle or static deployment unless a consumer imports
+the package into its application runtime. A project using on-demand image responses should treat
+the renderer and its native binaries as server deployment dependencies.
 
 ## Public contract
 
@@ -55,6 +68,11 @@ The stable package subpaths are:
 
 ## Before 1.0
 
-The 0.8 cycle freezes the export surface, validates packed artifacts in migrated consumers, and
-collects final feedback. Any required breaking correction discovered during that cycle should ship
-before 1.0 instead of being carried into the stable contract.
+The 0.9 cycle keeps the export surface frozen, runs the complete suite on Node.js 22 and 24, and
+builds plain Node.js, Astro, and Next.js consumers from both the packed candidate and the published
+registry artifact. The hosted checker is protected by application URL policy, same-origin request
+validation, Cloudflare rate limiting, and the Workers public-network egress boundary.
+
+The executable acceptance criteria live in [the release checklist](./docs/release-acceptance.md).
+Any required breaking correction discovered during this cycle should ship before 1.0 instead of
+being carried into the stable contract.

@@ -10,6 +10,7 @@
     "generate:og": "node ../../packages/og/dist/cli.js generate",
     "lint": "astro check",
     "preview": "astro preview",
+    "test": "vitest run",
     "typecheck": "astro check",
     "validate": "pnpm run clean && pnpm run build"
   },
@@ -17,10 +18,11 @@
     "@astrojs/sitemap": "^3.7.3",
     "@santi020k/lumen-astro": "^1.4.0",
     "@santi020k/og": "workspace:*",
-    "astro": "^7.2.4"
+    "astro": "^7.2.5"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.6",
-    "typescript": "^5.9.2"
+    "@astrojs/check": "^0.9.10",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
   }
 }

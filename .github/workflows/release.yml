@@ -6,7 +6,7 @@ on:
       version:
         description: Version to publish
         required: true
-        default: 0.8.0
+        default: 0.9.0
         type: string
 
 permissions:
@@ -20,7 +20,7 @@ jobs:
   release:
     name: Publish npm package and GitHub release
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     environment:
       name: release
       url: https://www.npmjs.com/package/@santi020k/og/v/${{ inputs.version }}
@@ -77,6 +77,9 @@ jobs:
       - name: Validate release candidate
         run: pnpm run validate
 
+      - name: Test packed release candidate in consumers
+        run: pnpm run test:consumers
+
       - name: Publish package
         working-directory: packages/og
         env:
@@ -107,6 +110,11 @@ jobs:
 
           echo "The npm registry did not return @santi020k/og@$RELEASE_VERSION after five minutes."
           exit 1
+
+      - name: Test registry package in consumers
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: pnpm --filter @santi020k/og run test:consumers -- --version "$RELEASE_VERSION"
 
       - name: Create tag and GitHub release
         env:

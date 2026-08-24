@@ -4,6 +4,11 @@ import {
 } from '@santi020k/og/inspect'
 
 interface PagesContext {
+  env: {
+    CHECKER_RATE_LIMITER?: {
+      limit: (options: { key: string }) => Promise<{ success: boolean }>
+    }
+  }
   request: Request
 }
 
@@ -14,20 +19,22 @@ interface DnsAnswer {
 
 interface DnsResponse {
   Answer?: readonly DnsAnswer[]
+  Status?: number
 }
 
 const isDnsResponse = (value: unknown): value is DnsResponse => {
   if (!value || typeof value !== 'object') return false
 
   const answer = (value as Readonly<Record<string, unknown>>).Answer
+  const status = (value as Readonly<Record<string, unknown>>).Status
 
-  return answer === undefined || (Array.isArray(answer) && answer.every(item => {
+  return (status === undefined || typeof status === 'number') && (answer === undefined || (Array.isArray(answer) && answer.every(item => {
     if (!item || typeof item !== 'object') return false
 
     const record = item as Readonly<Record<string, unknown>>
 
     return typeof record.data === 'string' && typeof record.type === 'number'
-  }))
+  })))
 }
 
 const literalUrl = (address: string): URL => new URL(address.includes(':') ? `http://[${address}]` : `http://${address}`)
@@ -46,6 +53,7 @@ const dnsAddresses = async (hostname: string): Promise<readonly string[]> => {
     const value: unknown = await response.json()
 
     if (!isDnsResponse(value)) throw new Error('The hostname returned an invalid DNS response.')
+    if (value.Status !== undefined && value.Status !== 0) throw new Error('The hostname could not be resolved safely.')
 
     return value.Answer?.filter(answer => answer.type === type).map(answer => answer.data) ?? []
   }))
@@ -71,18 +79,44 @@ const authorizeHostedUrl = async (url: URL): Promise<void> => {
   for (const address of await dnsAddresses(hostname)) assertPublicInspectionUrl(literalUrl(address))
 }
 
-const json = (value: unknown, status = 200): Response => Response.json(value, {
+const json = (value: unknown, status = 200, extraHeaders: HeadersInit = {}): Response => Response.json(value, {
   headers: {
     'cache-control': 'no-store',
     'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    ...Object.fromEntries(new Headers(extraHeaders)),
     'x-content-type-options': 'nosniff'
   },
   status
 })
 
-export const onRequestPost = async ({ request }: PagesContext): Promise<Response> => {
-  if (request.headers.get('sec-fetch-site') && request.headers.get('sec-fetch-site') !== 'same-origin') {
+export const onRequestPost = async ({ env, request }: PagesContext): Promise<Response> => {
+  const requestOrigin = new URL(request.url).origin
+  const origin = request.headers.get('origin')
+  const fetchSite = request.headers.get('sec-fetch-site')
+
+  if ((origin && origin !== requestOrigin) || (!origin && fetchSite !== 'same-origin')) {
     return json({ error: 'Cross-site inspection requests are not allowed.' }, 403)
+  }
+
+  if (!env.CHECKER_RATE_LIMITER) {
+    return json({ error: 'The hosted checker is temporarily unavailable.' }, 503)
+  }
+
+  const clientAddress = request.headers.get('cf-connecting-ip')?.trim() || 'local-development'
+  let rateLimit: { success: boolean }
+
+  try {
+    rateLimit = await env.CHECKER_RATE_LIMITER.limit({ key: clientAddress })
+  } catch {
+    return json({ error: 'The hosted checker is temporarily unavailable.' }, 503)
+  }
+
+  if (!rateLimit.success) {
+    return json(
+      { error: 'Too many inspections. Wait one minute and try again.' },
+      429,
+      { 'retry-after': '60' }
+    )
   }
 
   const declaredLength = Number(request.headers.get('content-length'))

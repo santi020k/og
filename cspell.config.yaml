@@ -22,6 +22,7 @@ words:
   - monorepos
   - prerendered
   - prerenders
+  - ratelimits
   - referrerpolicy
   - Resvg
   - Roadscore

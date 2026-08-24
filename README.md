@@ -64,6 +64,12 @@ Run the complete package and website quality suite before shipping:
 pnpm validate
 ```
 
+The release gate also installs the packed package into plain Node.js, Astro, and Next.js projects:
+
+```bash
+pnpm test:consumers
+```
+
 ## Deployment and release
 
 The website and its protected public-URL inspection function deploy to the `santi020k-og`
@@ -77,7 +83,8 @@ environment, the `CLOUDFLARE_API_TOKEN` and
 Package releases are deliberate. Run the **Release** GitHub workflow with a version matching
 `packages/og/package.json`. The `release` environment must provide `NPM_TOKEN`; the workflow
 validates the repository, publishes with npm provenance, verifies the registry result, and then
-creates the matching Git tag and GitHub release.
+rebuilds registry-installed consumers before creating the matching Git tag and GitHub release. See
+the [release acceptance checklist](packages/og/docs/release-acceptance.md) for the complete gate.
 
 ## License
 
