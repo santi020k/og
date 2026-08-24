@@ -18,7 +18,7 @@
     "@astrojs/sitemap": "^3.7.3",
     "@santi020k/lumen-astro": "^1.4.0",
     "@santi020k/og": "workspace:*",
-    "astro": "^7.2.5"
+    "astro": "^7.2.6"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",

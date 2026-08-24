@@ -1,7 +1,7 @@
 # Release acceptance
 
-Version 0.9 is the final validation release before the public contract becomes stable in 1.0. A
-release is accepted only when every required item below has evidence from the release commit.
+Version 1.0 establishes the stable public contract after the 0.9 validation cycle. The release is
+accepted only when every required item below has evidence from the release commit.
 
 ## Repository state
 

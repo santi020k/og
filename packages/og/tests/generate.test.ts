@@ -136,7 +136,7 @@ describe('generate', () => {
       .resolves.toBe('png:Hello')
 
     await expect(readFile(path.join(root, '.og-cache.json'), 'utf8'))
-      .resolves.toContain('"generatorVersion": "0.9.0"')
+      .resolves.toContain('"generatorVersion": "1.0.0"')
   })
 
   it('writes cards and skips unchanged outputs using content fingerprints', async () => {

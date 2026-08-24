@@ -168,7 +168,7 @@ test('prints machine-readable generation and migration reports', async () => {
     const generation = JSON.parse(generated.stdout)
     const report = JSON.parse(migrated.stdout)
 
-    assert.equal(generation.version, '0.9.0')
+    assert.equal(generation.version, '1.0.0')
 
     assert.equal(generation.total, 2)
 
