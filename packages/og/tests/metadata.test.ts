@@ -133,6 +133,12 @@ describe('portable metadata', () => {
       },
       height: 630,
       output: 'articles/portable.webp',
+      route: {
+        alt: 'A diagram showing one page definition feeding several metadata formats',
+        description: 'One definition for the image and every social metadata format.',
+        pathname: '/articles/portable',
+        title: 'Portable metadata'
+      },
       sources: ['content/article.md'],
       width: 1200
     })
@@ -143,7 +149,8 @@ describe('portable metadata', () => {
       title: 'Home'
     })).toEqual({
       data: { description: 'Home description', title: 'Home' },
-      output: 'index.webp'
+      output: 'index.webp',
+      route: { description: 'Home description', pathname: '/', title: 'Home' }
     })
   })
 

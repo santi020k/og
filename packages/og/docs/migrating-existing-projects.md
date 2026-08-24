@@ -1,9 +1,9 @@
 # Migrating existing projects
 
-Version 0.4 adds portable page metadata, framework-neutral content, typed catalog mapping,
-multi-format cards, deterministic typography, version-aware caching, richer content filters, and
-migration automation on top of the default design layer introduced in 0.3. Preset and custom
-renderers use the same generation, caching, cleanup, and CI behavior.
+Version 0.5 adds bound site definitions, an Astro head component, route manifests, extensible
+JSON-LD recipes, declarative content archives, and final-output auditing on top of the portable
+metadata and content APIs introduced in 0.4. Preset and custom renderers use the same generation,
+caching, cleanup, and CI behavior.
 
 ## Prefer a preset for conventional cards
 
@@ -66,6 +66,10 @@ const tags = createMetaTags(page, site)
 const metadata = toNextMetadata(page, site)
 ```
 
+For repeated site options, replace the individual calls with `defineSite`. Astro projects can render
+the result with `@santi020k/og/astro/head`, and `routeManifest` lets the build audit verify that every
+indexable route has the expected card and JSON-LD types.
+
 Use `renderMetaTags` from `@santi020k/og/metadata/html` for escaped static or server-rendered HTML.
 Run image generation before the web-framework build so every referenced static image exists.
 
@@ -94,7 +98,8 @@ export default definePresetConfig({
 The helper understands nested `index.md` routes, excludes drafts by default, and automatically
 tracks each content file as a card source. Use `include` and `exclude` before parsing, `filter` and a
 custom `draft` predicate after parsing, `coverFields` for fallbacks, and `aggregate` for tag,
-pagination, or locale cards. Existing `collectAstroContentCards` and `readAstroContent` imports from
+pagination, or locale cards. Use `route` when the published URL differs from the content folder
+structure. Existing `collectAstroContentCards` and `readAstroContent` imports from
 `@santi020k/og/astro` remain compatibility aliases.
 
 ## Typed data catalogs and multiple formats
@@ -112,6 +117,27 @@ const cards = createCards(products, product => ({
   formatAliases: product => ({ png: [`share/${product.slug}.png`] }),
 })
 ```
+
+For Markdown collections, prefer `paginateArchive` and `groupArchive` over consumer-owned loops.
+Nested cover fields and `resolveCover` replace local frontmatter traversal and asset resolution.
+
+## Replace common SEO validators
+
+Run the shared audit against final framework output, then keep a small project script only for
+genuinely product-specific contracts such as native-icon byte parity or language alternates:
+
+```bash
+santi-og audit \
+  --site apps/website/dist \
+  --site-url https://example.com \
+  --manifest apps/website/dist/og/manifest.json \
+  --unique-images \
+  --max-image-bytes 5000000
+```
+
+Use `schemaTypes` on page or route definitions to declare route-specific JSON-LD expectations.
+The manifest carries those expectations into the audit without coupling the renderer core to a
+particular Schema.org vocabulary.
 
 ## Keep a custom renderer when it is meaningful
 
@@ -147,5 +173,5 @@ Start with `santi-og migrate --report --json` to inventory the remaining work. R
 `santi-og compare --threshold 0.01` when visual parity is required; it renders in a temporary
 directory and can fail CI when decoded pixel differences exceed the chosen ratio. Missing outputs
 and dimension changes always fail because they have no comparable pixel ratio. Use
-`santi-og upgrade --to 0.4.0` to update package manifests or pnpm catalogs, then run the package
+`santi-og upgrade --to 0.5.0` to update package manifests or pnpm catalogs, then run the package
 manager install command yourself.

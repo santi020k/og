@@ -6,12 +6,13 @@ import SiteFooter from '../../components/SiteFooter.astro'
 import SiteHeader from '../../components/SiteHeader.astro'
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
-const description = 'Use @santi020k/og v0.4 portable page metadata, framework-neutral content helpers, visual presets, custom renderers, deterministic caching, and safe output management.'
+const description = 'Use @santi020k/og v0.5 site definitions, Astro metadata, extensible JSON-LD, built-site audits, content helpers, visual presets, and deterministic output management.'
 
 const sections = [
   ['quick-start', 'Quick start'],
   ['presets', 'Visual presets'],
   ['metadata', 'Page metadata'],
+  ['site-and-audit', 'Site, schema, and audit'],
   ['content', 'Markdown content'],
   ['typed-catalogs', 'Typed catalogs'],
   ['route-cards', 'Route cards'],
@@ -110,6 +111,34 @@ const site = { siteUrl: 'https://example.com', siteName: 'Example' }
 export const tags = createMetaTags(page, site)
 export const html = renderMetaTags(tags)
 export const metadata = toNextMetadata(page, site)`
+
+const siteAuditExample = `import MetadataHead from '@santi020k/og/astro/head'
+import { articleSchema, defineSchemaRecipe, serializeJsonLd } from '@santi020k/og/schema'
+import { defineSite } from '@santi020k/og/site'
+
+export const site = defineSite({
+  siteUrl: 'https://example.com',
+  siteName: 'Example',
+  publicImagePath: '/og',
+  defaults: { image: { width: 1200, height: 630 } },
+})
+
+export const page = site.page({
+  pathname: '/guides/useful',
+  title: 'A useful guide',
+  description: 'One definition for metadata, card, and audit.',
+  image: { output: 'guides/useful.webp', alt: 'Useful guide card' },
+  schemaTypes: ['TechArticle'],
+})
+
+const jsonLd = serializeJsonLd(articleSchema({
+  type: 'TechArticle',
+  name: page.title,
+  url: 'https://example.com/guides/useful',
+}))
+
+// Astro: <MetadataHead page={page} site={site.options} />
+// CI: santi-og audit --site dist --site-url https://example.com --manifest dist/og/manifest.json`
 
 const catalogExample = `import { createCards } from '@santi020k/og'
 
@@ -229,7 +258,7 @@ const jsonResultExample = `{
   "cleaned": [],
   "stale": [],
   "total": 2,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "elapsedMilliseconds": 184
 }`
 
@@ -237,8 +266,9 @@ const cliExample = `pnpm exec santi-og init
 pnpm exec santi-og generate
 pnpm exec santi-og check
 pnpm exec santi-og compare --threshold 0.01
+pnpm exec santi-og audit --site dist --site-url https://example.com --sarif
 pnpm exec santi-og migrate --report --json
-pnpm exec santi-og upgrade --to 0.4.0`
+pnpm exec santi-og upgrade --to 0.5.0`
 ---
 
 <BaseLayout title="Documentation" description={description}>
@@ -255,7 +285,7 @@ pnpm exec santi-og upgrade --to 0.4.0`
         <p>{description} Start with a useful visual default and customize only what your project needs.</p>
       </div>
       <div class="docs-meta">
-        <span><b>v0.4.0</b> Current docs</span>
+        <span><b>v0.5.0</b> Current docs</span>
         <span><b>Node.js 22.18+</b> Runtime</span>
         <span><b>4 presets</b> Included</span>
       </div>
@@ -370,6 +400,15 @@ pnpm exec santi-og upgrade --to 0.4.0`
           </div>
         </section>
 
+        <section id="site-and-audit">
+          <span class="docs-section-number">04</span>
+          <h2>One site contract, extensible schemas, and final-output auditing</h2>
+          <p><code>defineSite</code> binds metadata defaults once and derives pages, cards, HTML, Astro head output, and Next.js metadata. Route manifests connect generated cards to built routes, including the JSON-LD <code>@type</code> values each route requires.</p>
+          <pre><code>{siteAuditExample}</code></pre>
+          <p>Built-in JSON-LD recipes cover websites, articles, software, breadcrumbs, collections, people, and organizations. Use <code>extendSchema</code> for extra Schema.org properties or <code>defineSchemaRecipe</code> for FAQs, products, events, recipes, and domain-specific scenarios. Unknown vocabulary remains valid.</p>
+          <p><code>santi-og audit</code> checks final HTML, canonicals, Open Graph and X metadata, h1 and language contracts, image bytes, dimensions and MIME declarations, duplicates, manifest coverage, and route-specific schemas. Add <code>--json</code> or <code>--sarif</code> for CI.</p>
+        </section>
+
         <section id="content">
           <span class="docs-section-number">04</span>
           <h2>Framework-neutral Markdown and MDX</h2>
@@ -390,9 +429,12 @@ pnpm exec santi-og upgrade --to 0.4.0`
                 <tr><td><code>includeDrafts</code></td><td><code>false</code></td><td>Include entries identified as drafts.</td></tr>
                 <tr><td><code>map</code></td><td>Preset frontmatter mapping</td><td>Map an entry to typed card data or return <code>null</code> to omit it.</td></tr>
                 <tr><td><code>coverFields</code></td><td>image, cover, heroImage</td><td>Preferred frontmatter image fields for the default mapper.</td></tr>
+                <tr><td><code>resolveCover</code></td><td><code>false</code></td><td>Resolve content-relative local cover paths and track the selected asset.</td></tr>
+                <tr><td><code>archives</code></td><td><code>[]</code></td><td>Declarative <code>paginateArchive</code> and <code>groupArchive</code> recipes.</td></tr>
                 <tr><td><code>basePath</code></td><td>Empty</td><td>Route prefix used by deterministic output mapping.</td></tr>
                 <tr><td><code>extension</code></td><td><code>webp</code></td><td>Default generated image extension.</td></tr>
                 <tr><td><code>output</code></td><td>Pathname output</td><td>Override the output filename for each mapped entry.</td></tr>
+                <tr><td><code>route</code></td><td>Content path</td><td>Map an entry to its published route when URLs differ from content folders.</td></tr>
                 <tr><td><code>sources</code></td><td>Content file</td><td>Add covers or other files that invalidate the card cache.</td></tr>
                 <tr><td><code>aggregate</code></td><td>Omitted</td><td>Append pagination, tag, locale, or collection cards after entry mapping.</td></tr>
               </tbody>
@@ -485,6 +527,7 @@ pnpm exec santi-og upgrade --to 0.4.0`
                 <tr><td><code>generate</code></td><td>Render changed cards and clean tracked obsolete output when enabled.</td></tr>
                 <tr><td><code>check</code></td><td>Report missing, changed, or stale cards without mutation.</td></tr>
                 <tr><td><code>compare</code></td><td>Report dimensions, format, size, and pixel differences without replacing files.</td></tr>
+                <tr><td><code>audit</code></td><td>Validate final built HTML, social images, route manifests, and required schema types.</td></tr>
                 <tr><td><code>migrate --report</code></td><td>Inventory cards, outputs, local renderer modules, and remaining custom responsibilities.</td></tr>
                 <tr><td><code>upgrade --to</code></td><td>Update package dependencies, pnpm catalogs, and release-age exclusions.</td></tr>
                 <tr><td><code>--json</code></td><td>Print machine-readable generation, check, comparison, migration, or upgrade results.</td></tr>
@@ -525,6 +568,7 @@ pnpm exec santi-og upgrade --to 0.4.0`
                 <tr><td><code>assets</code></td><td><code>[]</code></td><td>Static files copied and tracked alongside cards.</td></tr>
                 <tr><td><code>outputDirectory</code></td><td><code>public/og</code></td><td>Primary output directory relative to the project root.</td></tr>
                 <tr><td><code>outputDirectories</code></td><td><code>{`{}`}</code></td><td>Additional named output directories.</td></tr>
+                <tr><td><code>routeManifest</code></td><td><code>false</code></td><td>Publish and check a deterministic route-to-image and schema contract.</td></tr>
                 <tr><td><code>width</code> / <code>height</code></td><td><code>1200 × 630</code></td><td>Default dimensions; individual cards may override them.</td></tr>
                 <tr><td><code>cache</code></td><td>Enabled</td><td>Boolean or cache options with semantic key, manifest path, and shared sources.</td></tr>
                 <tr><td><code>clean</code></td><td><code>false</code></td><td>Remove only obsolete outputs previously tracked by the tool.</td></tr>
@@ -537,8 +581,8 @@ pnpm exec santi-og upgrade --to 0.4.0`
 
         <section class="docs-next">
           <span class="kicker">Migration guide</span>
-          <h2>Replace repeated renderers with portable v0.4 workflows.</h2>
-          <p>The ten-project migration removed 2,273 lines of consumer Open Graph code while preserving route data and project-owned branding.</p>
+          <h2>Replace repeated renderers and validators with portable v0.5 workflows.</h2>
+          <p>The multi-project migration keeps route data and project-specific contracts local while moving rendering, metadata, schema recipes, archives, and final-output auditing into the library.</p>
           <a class="button" href="https://github.com/santi020k/og/blob/main/packages/og/docs/migrating-existing-projects.md">Read the migration guide <span>↗</span></a>
         </section>
       </article>

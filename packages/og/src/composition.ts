@@ -24,6 +24,7 @@ export interface PathCardSpec<T> {
   data: T
   height?: number
   pathname: string
+  route?: Omit<NonNullable<OgCard<T>['route']>, 'pathname'>
   sources?: OgCard<T>['sources']
   width?: number
 }
@@ -40,6 +41,7 @@ export interface CreateCardsOptions<T, TData> {
   height?: number
   output: (item: T, data: TData, index: number) => string
   outputDirectory?: string
+  route?: (item: T, data: TData, index: number) => OgCard<TData>['route']
   sources?: (item: T, data: TData, index: number) => OgCard<TData>['sources']
   width?: number
 }
@@ -54,6 +56,7 @@ export const createCards = <T, TData>(
   const aliases = options.aliases?.(item, data, index)
   const formatAliases = options.formatAliases?.(item, data, index)
   const sources = options.sources?.(item, data, index)
+  const route = options.route?.(item, data, index)
 
   return {
     data,
@@ -63,6 +66,7 @@ export const createCards = <T, TData>(
     ...(formatAliases ? { formatAliases } : {}),
     ...(options.height === undefined ? {} : { height: options.height }),
     ...(options.outputDirectory ? { outputDirectory: options.outputDirectory } : {}),
+    ...(route ? { route } : {}),
     ...(sources ? { sources } : {}),
     ...(options.width === undefined ? {} : { width: options.width })
   }
@@ -106,6 +110,7 @@ export const createPathCards = <T>(
 ): OgCard<T>[] => specs.map(spec => ({
   data: spec.data,
   output: pathnameOutput(spec.pathname, options),
+  route: { pathname: spec.pathname, ...spec.route },
   ...(spec.aliases ? { aliases: spec.aliases } : {}),
   ...(spec.height === undefined ? {} : { height: spec.height }),
   ...(spec.sources ? { sources: spec.sources } : {}),

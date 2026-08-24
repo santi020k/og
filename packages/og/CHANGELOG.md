@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0 - 2026-08-24
+
+- Add `defineSite`, an official Astro metadata head component, deterministic route manifests, and
+  built-site metadata/image auditing with human, JSON, and SARIF output.
+- Add extensible JSON-LD recipes, arbitrary schema nodes, composition, extension helpers, and safe
+  script serialization.
+- Add nested content fields, local cover resolution, and declarative pagination and grouped archive
+  cards.
+- Emit canonical `twitter:url` metadata and expand common final-HTML audit coverage.
+
 ## 0.4.0 - 2026-08-22
 
 - Add portable page metadata, card derivation, safe HTML rendering, and a dependency-free Next.js

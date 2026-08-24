@@ -1,0 +1,39 @@
+---
+import type { MetadataTag, PageMetadata, SiteMetadataOptions } from '@santi020k/og/metadata'
+import { createMetaTags } from '@santi020k/og/metadata'
+
+interface Props {
+  /** Additional descriptors appended after generated metadata. */
+  extra?: readonly MetadataTag[]
+  /** Keep only title, description, and robots for noindex pages. */
+  noindexPolicy?: 'all' | 'minimal'
+  page: PageMetadata
+  site: SiteMetadataOptions
+  /** Project-specific policy hook applied before extra descriptors are appended. */
+  transform?: (tags: readonly MetadataTag[]) => readonly MetadataTag[]
+}
+
+const { extra = [], noindexPolicy = 'all', page, site, transform } = Astro.props
+const generated = createMetaTags(page, site)
+
+const selected = noindexPolicy === 'minimal' && page.robots?.index === false ?
+  generated.filter(tag => tag.tag === 'title' || (
+    tag.tag === 'meta' && ['description', 'robots'].includes(tag.name ?? '')
+  )) :
+  generated
+
+const tags = [
+  ...(transform?.(selected) ?? selected),
+  ...extra
+]
+
+const titleTags = tags.filter(tag => tag.tag === 'title')
+const linkTags = tags.filter(tag => tag.tag === 'link')
+const propertyTags = tags.flatMap(tag => tag.tag === 'meta' && tag.property ? [tag] : [])
+const nameTags = tags.flatMap(tag => tag.tag === 'meta' && tag.name ? [tag] : []);
+---
+
+{titleTags.map(tag => tag.tag === 'title' && <title>{tag.content}</title>)}
+{linkTags.map(tag => tag.tag === 'link' && <link rel={tag.rel} href={tag.href} />)}
+{propertyTags.map(tag => <meta property={tag.property} content={tag.content} />)}
+{nameTags.map(tag => <meta name={tag.name} content={tag.content} />)}

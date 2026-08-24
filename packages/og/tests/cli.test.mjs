@@ -167,7 +167,7 @@ test('prints machine-readable generation and migration reports', async () => {
     const generation = JSON.parse(generated.stdout)
     const report = JSON.parse(migrated.stdout)
 
-    assert.equal(generation.version, '0.4.0')
+    assert.equal(generation.version, '0.5.0')
 
     assert.equal(generation.total, 2)
 
@@ -176,6 +176,68 @@ test('prints machine-readable generation and migration reports', async () => {
     assert.equal(report.physicalOutputs, 2)
 
     assert.equal(report.customRenderer, true)
+  } finally {
+    await rm(root, { force: true, recursive: true })
+  }
+})
+
+test('audits a built site with JSON and SARIF output', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'santi-og-cli-audit-'))
+
+  try {
+    const site = path.join(root, 'dist')
+
+    await mkdir(path.join(site, 'og'), { recursive: true })
+
+    await writeFile(
+      path.join(site, 'og/index.svg'),
+      '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" />'
+    )
+
+    await writeFile(path.join(site, 'index.html'), `<!doctype html>
+<html lang="en"><head>
+<title>Example</title>
+<meta name="description" content="Example description">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://example.com/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Example">
+<meta property="og:description" content="Example description">
+<meta property="og:url" content="https://example.com/">
+<meta property="og:image" content="https://example.com/og/index.svg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Example card">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:url" content="https://example.com/">
+<meta name="twitter:title" content="Example">
+<meta name="twitter:description" content="Example description">
+<meta name="twitter:image" content="https://example.com/og/index.svg">
+<meta name="twitter:image:alt" content="Example card">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite"}</script>
+</head><body><h1>Example</h1></body></html>`)
+
+    const cli = path.resolve('dist/cli.js')
+
+    const json = await run(
+      process.execPath,
+      [cli, 'audit', '--root', root, '--site', 'dist', '--site-url', 'https://example.com', '--json'],
+      root
+    )
+
+    const sarif = await run(
+      process.execPath,
+      [cli, 'audit', '--root', root, '--site', 'dist', '--site-url', 'https://example.com', '--sarif'],
+      root
+    )
+
+    assert.equal(json.code, 0, json.stderr)
+
+    assert.equal(sarif.code, 0, sarif.stderr)
+
+    assert.equal(JSON.parse(json.stdout).passed, true)
+
+    assert.equal(JSON.parse(sarif.stdout).version, '2.1.0')
   } finally {
     await rm(root, { force: true, recursive: true })
   }

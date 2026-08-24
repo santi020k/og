@@ -52,6 +52,8 @@ export interface PageMetadata {
   alternateLocales?: readonly string[]
   pathname: string
   robots?: PageRobotsMetadata
+  /** JSON-LD @type values that the built page audit should require. */
+  schemaTypes?: readonly string[]
   title: string
   twitter?: PageTwitterMetadata
   type?: PageOpenGraphType
@@ -368,6 +370,7 @@ export const createMetaTags = (
 
   tags.push(
     metaName('twitter:card', metadata.twitter.card),
+    metaName('twitter:url', metadata.canonical),
     metaName('twitter:title', metadata.title),
     metaName('twitter:description', metadata.description)
   )
@@ -410,6 +413,13 @@ export function createPageCard<T>(
     ...(options.aliases ? { aliases: options.aliases } : {}),
     ...(height === undefined ? {} : { height }),
     ...(options.outputDirectory ? { outputDirectory: options.outputDirectory } : {}),
+    route: {
+      ...(page.image?.alt ? { alt: page.image.alt } : {}),
+      description: page.description,
+      pathname: page.pathname.split(/[?#]/u)[0] || '/',
+      ...(page.schemaTypes?.length ? { schemaTypes: page.schemaTypes } : {}),
+      title: page.title
+    },
     ...(options.sources ? { sources: options.sources } : {}),
     ...(width === undefined ? {} : { width })
   }
