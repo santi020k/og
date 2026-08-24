@@ -58,6 +58,22 @@ import { page, site } from '../metadata'
 Pass `noindexPolicy="minimal"` to keep only title, description, and robots on noindex pages. Use
 `extra` for project-specific descriptors such as verification or theme metadata.
 
+### Starlight
+
+Starlight component overrides can preserve the framework's descriptors while adding deterministic
+social-image metadata:
+
+```astro
+---
+import StarlightMetadataHead from '@santi020k/og/astro/starlight'
+---
+
+<StarlightMetadataHead {...Astro.props} />
+```
+
+The adapter maps `/guide/getting-started/` to `/og/guide--getting-started.webp`. Frontmatter can
+override the defaults with `ogImage` and `ogImageAlt` when the content schema permits those fields.
+
 ## Route manifest
 
 Enable `routeManifest` to publish a deterministic map from routes to every generated image and
@@ -177,9 +193,35 @@ santi-og audit --site dist --site-url https://example.com
 santi-og audit --site dist --site-url https://example.com --manifest public/og/manifest.json
 santi-og audit --site dist --site-url https://example.com --json
 santi-og audit --site dist --site-url https://example.com --sarif > results.sarif
+santi-og audit --site dist --site-url https://example.com --standards
 ```
 
 It checks titles, descriptions, robots, canonicals, Open Graph, X metadata, canonical-route
 consistency, local image existence and dimensions, duplicate titles, optional duplicate images,
 manifest coverage, and orphaned route cards. `auditSite` also accepts project-specific asynchronous
 rules for product requirements that do not belong in the core library.
+
+For programmatic audits, `standardAuditRules()` enables sitemap, robots, hreflang alternate, and
+redirect rules together. Each rule is independently configurable:
+
+```ts
+import { auditSite } from '@santi020k/og/audit'
+import {
+  createAlternateLinksAuditRule,
+  createRobotsAuditRule,
+  createSitemapAuditRule,
+} from '@santi020k/og/audit/rules'
+
+const result = await auditSite({
+  directory: 'dist',
+  siteUrl: 'https://example.com',
+  siteRules: [
+    createSitemapAuditRule({ reportOrphans: true }),
+    createRobotsAuditRule({
+      requiredDirectives: [{ name: 'Allow', value: '/' }],
+      expectedSitemaps: ['https://example.com/sitemap.xml'],
+    }),
+    createAlternateLinksAuditRule({ requireXDefault: true }),
+  ],
+})
+```

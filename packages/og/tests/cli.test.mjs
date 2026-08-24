@@ -167,7 +167,7 @@ test('prints machine-readable generation and migration reports', async () => {
     const generation = JSON.parse(generated.stdout)
     const report = JSON.parse(migrated.stdout)
 
-    assert.equal(generation.version, '0.5.0')
+    assert.equal(generation.version, '0.6.0')
 
     assert.equal(generation.total, 2)
 
@@ -192,6 +192,13 @@ test('audits a built site with JSON and SARIF output', async () => {
     await writeFile(
       path.join(site, 'og/index.svg'),
       '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" />'
+    )
+
+    await writeFile(path.join(site, 'robots.txt'), 'User-agent: *\nSitemap: https://example.com/sitemap.xml\n')
+
+    await writeFile(
+      path.join(site, 'sitemap.xml'),
+      '<?xml version="1.0"?><urlset><url><loc>https://example.com/</loc></url></urlset>'
     )
 
     await writeFile(path.join(site, 'index.html'), `<!doctype html>
@@ -221,7 +228,18 @@ test('audits a built site with JSON and SARIF output', async () => {
 
     const json = await run(
       process.execPath,
-      [cli, 'audit', '--root', root, '--site', 'dist', '--site-url', 'https://example.com', '--json'],
+      [
+        cli,
+        'audit',
+        '--root',
+        root,
+        '--site',
+        'dist',
+        '--site-url',
+        'https://example.com',
+        '--standards',
+        '--json'
+      ],
       root
     )
 

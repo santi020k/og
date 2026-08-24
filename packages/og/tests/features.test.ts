@@ -6,6 +6,7 @@ import sharp from 'sharp'
 import { describe, expect, test } from 'vitest'
 
 import { auditSite, auditToSarif } from '../src/audit.js'
+import { standardAuditRules } from '../src/audit-rules.js'
 import {
   collectContentCards,
   getFrontmatterValue,
@@ -185,9 +186,13 @@ describe('route manifests and built-site audits', () => {
 
     await mkdir(path.join(dist, 'old'), { recursive: true })
 
-    await writeFile(path.join(dist, 'index.html'), `<!doctype html><html lang="en"><head>${site.html(page)}<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite"}</script></head><body><h1>Example</h1></body></html>`)
+    await writeFile(path.join(dist, 'index.html'), `<!doctype html><html lang="en"><head>${site.html(page)}<link rel="alternate" hreflang="en" href="https://example.com/"><link rel="alternate" hreflang="x-default" href="https://example.com/"><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite"}</script></head><body><h1>Example</h1></body></html>`)
 
     await writeFile(path.join(dist, 'old', 'index.html'), '<!doctype html><title>Redirecting</title><meta http-equiv="refresh" content="0;url=/"><meta name="robots" content="noindex"><link rel="canonical" href="https://example.com/">')
+
+    await writeFile(path.join(dist, 'robots.txt'), 'User-agent: *\nAllow: /\nSitemap: https://example.com/sitemap.xml\n')
+
+    await writeFile(path.join(dist, 'sitemap.xml'), '<?xml version="1.0"?><urlset><url><loc>https://example.com/</loc></url></urlset>')
 
     await sharp({
       create: { background: '#000000', channels: 3, height: 630, width: 1200 }
@@ -202,6 +207,22 @@ describe('route manifests and built-site audits', () => {
       directory: 'dist',
       manifest,
       root,
+      ...standardAuditRules({
+        alternates: {
+          expectedHrefs: page => page.route === '/' ?
+            ['https://example.com/', 'https://example.com/'] :
+            [],
+          requireLinks: true,
+          requireXDefault: true
+        },
+        robots: {
+          expectedSitemaps: ['https://example.com/sitemap.xml'],
+          requiredDirectives: [
+            { name: 'User-agent', value: '*' },
+            { name: 'Allow', value: '/' }
+          ]
+        }
+      }),
       siteUrl: 'https://example.com/'
     })
 
@@ -222,12 +243,16 @@ describe('route manifests and built-site audits', () => {
 
     await writeFile(path.join(dist, 'index.html'), '<title>Incomplete</title>')
 
-    const result = await auditSite({ directory: 'dist', root })
+    const result = await auditSite({ directory: 'dist', root, ...standardAuditRules() })
 
     expect(result.passed).toBe(false)
 
     expect(result.issues.map(item => item.code)).toContain('missing-description')
 
     expect(result.issues.map(item => item.code)).toContain('missing-og-image')
+
+    expect(result.issues.map(item => item.code)).toContain('missing-sitemap')
+
+    expect(result.issues.map(item => item.code)).toContain('missing-robots-file')
   })
 })

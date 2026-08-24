@@ -17,6 +17,7 @@ export interface AuditIssue {
 }
 
 export interface AuditedPage {
+  alternates: readonly AuditedAlternateLink[]
   canonical?: string
   description?: string
   file: string
@@ -28,6 +29,11 @@ export interface AuditedPage {
   title?: string
 }
 
+export interface AuditedAlternateLink {
+  href: string
+  language: string
+}
+
 export interface AuditRuleContext {
   directory: string
   page: AuditedPage
@@ -35,6 +41,16 @@ export interface AuditRuleContext {
 }
 
 export type AuditRule = (context: AuditRuleContext) => readonly AuditIssue[] | Promise<readonly AuditIssue[]>
+
+export interface AuditSiteRuleContext {
+  directory: string
+  pages: readonly AuditedPage[]
+  siteUrl?: URL
+}
+
+export type AuditSiteRule = (
+  context: AuditSiteRuleContext
+) => readonly AuditIssue[] | Promise<readonly AuditIssue[]>
 
 export interface SiteAuditOptions {
   directory: string
@@ -47,6 +63,7 @@ export interface SiteAuditOptions {
   requireUniqueTitles?: boolean
   root?: string
   rules?: readonly AuditRule[]
+  siteRules?: readonly AuditSiteRule[]
   siteUrl?: string | URL
 }
 
@@ -285,7 +302,19 @@ export const auditSite = async (options: SiteAuditOptions): Promise<SiteAuditRes
     const pageImage = meta(parsed, 'og:image')
     const pageRedirect = redirect(parsed)
 
+    const alternates = parsed.links.flatMap(link => {
+      const relationships = link.rel?.toLowerCase().split(/\s+/u) ?? []
+
+      return relationships.includes('alternate') && link.href && link.hreflang ?
+        [{
+          href: link.href,
+          language: link.hreflang
+        }] :
+        []
+    })
+
     const page: AuditedPage = {
+      alternates,
       ...(pageCanonical ? { canonical: pageCanonical } : {}),
       ...(pageDescription ? { description: pageDescription } : {}),
       file,
@@ -464,6 +493,10 @@ export const auditSite = async (options: SiteAuditOptions): Promise<SiteAuditRes
         }
       }
     }
+  }
+
+  for (const rule of options.siteRules ?? []) {
+    issues.push(...await rule({ directory, pages, ...(siteUrl ? { siteUrl } : {}) }))
   }
 
   const errors = issues.filter(item => item.severity === 'error').length

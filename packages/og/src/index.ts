@@ -1,14 +1,30 @@
 export {
+  type AuditedAlternateLink,
   type AuditedPage,
   type AuditIssue,
   type AuditRule,
   type AuditRuleContext,
   auditSite,
+  type AuditSiteRule,
+  type AuditSiteRuleContext,
   auditToSarif,
   type SarifLog,
   type SiteAuditOptions,
   type SiteAuditResult
 } from './audit.js'
+export {
+  type AlternateLinksAuditRuleOptions,
+  createAlternateLinksAuditRule,
+  createRedirectsAuditRule,
+  createRobotsAuditRule,
+  createSitemapAuditRule,
+  type RedirectsAuditRuleOptions,
+  type RobotsAuditRuleOptions,
+  type SitemapAuditRuleOptions,
+  type StandardAuditRules,
+  standardAuditRules,
+  type StandardAuditRulesOptions
+} from './audit-rules.js'
 export { compare, type OgComparison, type OgImageDetails } from './compare.js'
 export {
   createCards,

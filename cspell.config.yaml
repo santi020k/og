@@ -2,6 +2,8 @@ version: "0.2"
 language: en,en-GB
 useGitignore: true
 words:
+  - apos
+  - astrojs
   - avif
   - commitprompt
   - Contrac
@@ -9,6 +11,7 @@ words:
   - Eleventy
   - frontmatter
   - fontkit
+  - Hrefs
   - lock-in
   - Molina
   - monorepos

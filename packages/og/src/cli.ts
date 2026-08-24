@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 
 import { auditSite, auditToSarif } from './audit.js'
+import { standardAuditRules } from './audit-rules.js'
 import { compare } from './compare.js'
 import { generate } from './generate.js'
 import { createMigrationReport } from './report.js'
@@ -52,6 +53,7 @@ Options:
   --manifest <path>     Generated OG route manifest checked by the audit command
   --max-image-bytes <n> Fail social images larger than this byte count
   --unique-images       Require distinct social-image bytes for every route
+  --standards           Audit sitemap, robots, hreflang alternates, and redirects
   --threshold <ratio>   Maximum changed-pixel ratio accepted by compare
   --report              Analyze a config without changing consumer code
   --root <path>         Project root for upgrade (default: current directory)
@@ -343,6 +345,7 @@ const executeAudit = async (options: {
   root: string | undefined
   sarif: boolean
   siteUrl: string | undefined
+  standards: boolean
   uniqueImages: boolean
 }): Promise<void> => {
   if (!options.directory) throw new Error('The audit command requires --site <directory>.')
@@ -361,6 +364,7 @@ const executeAudit = async (options: {
     ...(maxImageBytes ? { maxImageBytes } : {}),
     requireUniqueImages: options.uniqueImages,
     ...(options.root ? { root: options.root } : {}),
+    ...(options.standards ? standardAuditRules() : {}),
     ...(options.siteUrl ? { siteUrl: options.siteUrl } : {})
   })
 
@@ -400,6 +404,7 @@ const run = async (): Promise<void> => {
       threshold: { type: 'string' },
       site: { type: 'string' },
       'site-url': { type: 'string' },
+      standards: { type: 'boolean' },
       to: { type: 'string' },
       'unique-images': { type: 'boolean' },
       version: { short: 'v', type: 'boolean' }
@@ -440,6 +445,7 @@ const run = async (): Promise<void> => {
       root: parsed.values.root,
       sarif: parsed.values.sarif ?? false,
       siteUrl: parsed.values['site-url'],
+      standards: parsed.values.standards ?? false,
       uniqueImages: parsed.values['unique-images'] ?? false
     })
 
