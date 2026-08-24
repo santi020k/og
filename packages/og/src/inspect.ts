@@ -37,6 +37,7 @@ export interface UrlInspection {
   redirects: readonly string[]
   requestedUrl: string
   responseStatus: number
+  score: number
   summary: Readonly<Record<InspectionStatus, number>>
 }
 
@@ -162,6 +163,21 @@ const check = (
   message: string
 ): InspectionCheck => ({ code, label, message, status })
 
+/** Score inspection checks from 0–100, with warnings earning half credit. */
+export const scoreInspectionChecks = (checks: readonly InspectionCheck[]): number => {
+  if (checks.length === 0) return 0
+
+  const earned = checks.reduce((total, item) => {
+    if (item.status === 'pass') return total + 1
+
+    if (item.status === 'warning') return total + 0.5
+
+    return total
+  }, 0)
+
+  return Math.round((earned / checks.length) * 100)
+}
+
 const requiredCheck = (
   value: string | undefined,
   code: string,
@@ -227,7 +243,7 @@ const metadataChecks = (metadata: InspectedMetadata, finalUrl: string): Inspecti
 }
 
 /** Parse one HTML document into portable metadata suitable for audits and interactive tools. */
-export const inspectHtml = (html: string, finalUrl: string): Omit<UrlInspection, 'elapsedMilliseconds' | 'image' | 'redirects' | 'requestedUrl' | 'responseStatus' | 'summary'> => {
+export const inspectHtml = (html: string, finalUrl: string): Omit<UrlInspection, 'elapsedMilliseconds' | 'image' | 'redirects' | 'requestedUrl' | 'responseStatus' | 'score' | 'summary'> => {
   const parsed = parseHtml(html)
   const canonical = link(parsed, 'canonical')
   const description = meta(parsed, 'description')
@@ -567,6 +583,7 @@ export const inspectUrl = async (input: string | URL, options: InspectUrlOptions
       redirects,
       requestedUrl: requestedUrl.href,
       responseStatus: response.status,
+      score: scoreInspectionChecks(checks),
       summary
     }
   } finally {

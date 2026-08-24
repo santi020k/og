@@ -272,7 +272,12 @@ h1 em, h2 em { color: var(--og-accent); font-style: normal; }
 .checker-results-heading h2 { font-size: clamp(34px, 5vw, 54px); }
 .checker-results-heading a { display: block; max-width: 600px; margin-top: 12px; overflow: hidden; color: hsl(var(--ink-muted)); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .checker-results-heading a:hover { color: hsl(var(--brand)); }
-.checker-summary { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.checker-summary { display: flex; gap: 14px; align-items: center; justify-content: flex-end; }
+.checker-score { display: grid; grid-template-columns: auto auto; align-items: baseline; min-width: 118px; padding: 12px 14px; border: 1px solid hsl(var(--brand) / .65); border-radius: 10px; background: hsl(var(--brand-soft) / .28); }
+.checker-score strong { color: hsl(var(--ink)); font-size: 28px; line-height: 1; }
+.checker-score > span { color: hsl(var(--ink-muted)); font: 600 11px ui-monospace, SFMono-Regular, monospace; }
+.checker-score small { grid-column: 1 / -1; margin-top: 5px; color: hsl(var(--ink-muted)); font: 600 9px ui-monospace, SFMono-Regular, monospace; letter-spacing: .06em; text-transform: uppercase; }
+.checker-counts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .checker-count { padding: 8px 10px; color: hsl(var(--ink-soft)); font: 600 11px ui-monospace, SFMono-Regular, monospace; border: 1px solid hsl(var(--line)); border-radius: 999px; background: hsl(var(--surface)); }
 .checker-count strong { color: hsl(var(--ink)); }
 .checker-count-pass { border-color: hsl(var(--success) / .55); }
@@ -393,7 +398,8 @@ footer { border-top: 1px solid var(--og-line); background: #06100c; }
   .checker-input-row { grid-template-columns: 1fr; }
   .checker-results { padding-top: 58px; }
   .checker-results-heading { align-items: start; flex-direction: column; gap: 24px; }
-  .checker-summary { justify-content: flex-start; }
+  .checker-summary { align-items: flex-start; flex-direction: column; justify-content: flex-start; }
+  .checker-counts { justify-content: flex-start; }
   .checker-metadata > div { grid-template-columns: 1fr; gap: 4px; }
   .checker-findings li { grid-template-columns: 1fr; gap: 10px; }
   .checker-finding-status { justify-self: start; }

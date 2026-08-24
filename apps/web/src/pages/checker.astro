@@ -108,9 +108,15 @@ const localCommands = [
             <a data-result-url target="_blank" rel="noopener noreferrer"></a>
           </div>
           <div class="checker-summary" aria-label="Inspection summary">
-            <span class="checker-count checker-count-pass" data-pass-count>0 passed</span>
-            <span class="checker-count checker-count-warning" data-warning-count>0 warnings</span>
-            <span class="checker-count checker-count-error" data-error-count>0 errors</span>
+            <div class="checker-score" data-score aria-label="Metadata score 0 out of 100">
+              <strong data-score-value>0</strong><span>/100</span>
+              <small>Metadata score</small>
+            </div>
+            <div class="checker-counts">
+              <span class="checker-count checker-count-pass" data-pass-count>0 passed</span>
+              <span class="checker-count checker-count-warning" data-warning-count>0 warnings</span>
+              <span class="checker-count checker-count-error" data-error-count>0 errors</span>
+            </div>
           </div>
         </div>
 
@@ -141,7 +147,7 @@ const localCommands = [
         <Card as="section" class="checker-findings-card">
           <CardHeader>
             <CardTitle as="h3">Checks</CardTitle>
-            <CardDescription>Evidence first: each result explains what was found instead of hiding it behind a score.</CardDescription>
+            <CardDescription>The score summarizes these results; every check keeps its evidence visible.</CardDescription>
           </CardHeader>
           <CardContent>
             <ol class="checker-findings" data-findings-list></ol>
@@ -196,6 +202,7 @@ const localCommands = [
         title?: string
         twitter: Readonly<Record<string, string>>
       }
+      score: number
       summary: Readonly<Record<'error' | 'pass' | 'warning', number>>
     }
 
@@ -238,7 +245,8 @@ const localCommands = [
         typeof item.code === 'string' && typeof item.label === 'string' && typeof item.message === 'string' &&
         (item.status === 'error' || item.status === 'pass' || item.status === 'warning')) &&
         typeof value.summary.error === 'number' && typeof value.summary.pass === 'number' &&
-        typeof value.summary.warning === 'number'
+        typeof value.summary.warning === 'number' && typeof value.score === 'number' && Number.isInteger(value.score) &&
+        value.score >= 0 && value.score <= 100
     }
 
     const setText = (selector: string, value: string): void => {
@@ -350,9 +358,14 @@ const localCommands = [
 
     const renderResult = (inspection: InspectionResult): void => {
       setText('[data-result-title]', inspection.metadata.title ?? 'Metadata results')
+      setText('[data-score-value]', String(inspection.score))
       setCount('[data-pass-count]', inspection.summary.pass, 'check passed', 'checks passed')
       setCount('[data-warning-count]', inspection.summary.warning, 'warning', 'warnings')
       setCount('[data-error-count]', inspection.summary.error, 'error', 'errors')
+
+      const score = document.querySelector<HTMLElement>('[data-score]')
+
+      score?.setAttribute('aria-label', `Metadata score ${inspection.score} out of 100`)
 
       const resultUrl = document.querySelector<HTMLAnchorElement>('[data-result-url]')
 
