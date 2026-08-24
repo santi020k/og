@@ -11,6 +11,25 @@ export interface OgOutputTarget {
   output: string
 }
 
+export interface OgRouteDescriptor {
+  /** Accessible description shared with page metadata and the generated route manifest. */
+  alt?: string
+  description?: string
+  pathname: string
+  /** JSON-LD @type values expected in the built page for this route. */
+  schemaTypes?: readonly string[]
+  title?: string
+}
+
+export interface OgRouteManifestOptions {
+  /** Manifest file relative to root. Defaults beside the default output directory. */
+  file?: string
+  /** Public URL prefix for the default output directory. */
+  publicPath?: string
+  /** Public URL prefixes for named output directories. */
+  publicPaths?: Readonly<Record<string, string>>
+}
+
 export interface OgAsset extends OgOutputTarget {
   /** Source file, absolute or relative to the project root. */
   source: string
@@ -31,6 +50,8 @@ export interface OgCard<T = unknown> {
   formatAliases?: Readonly<Partial<Record<OgFormat, readonly (string | OgOutputTarget)[]>>>
   /** Named directory from outputDirectories. Omit to use outputDirectory. */
   outputDirectory?: string
+  /** Route represented by this logical card. Enables route-manifest and audit coverage. */
+  route?: OgRouteDescriptor
   /** Additional files whose contents invalidate this card. */
   sources?: OgSourceCollection
   /** Optional per-card dimensions. */
@@ -104,6 +125,8 @@ export interface OgConfig<T = unknown> {
   outputDirectories?: Readonly<Record<string, string>>
   /** Project root. CLI configs default to the directory containing the config. */
   root?: string
+  /** Emit a public route-to-card manifest for runtime metadata and SEO auditing. */
+  routeManifest?: boolean | OgRouteManifestOptions
   /** Default image width. */
   width?: number
 }

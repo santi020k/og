@@ -11,6 +11,11 @@ import {
   readManifest,
   writeManifest } from './manifest.js'
 import { getFormat, resolveInside } from './paths.js'
+import {
+  createRouteManifest,
+  routeManifestIsCurrent,
+  routeManifestPath,
+  writeRouteManifest } from './route-manifest.js'
 import { collectTransitiveImports, expandSources } from './sources.js'
 import type {
   GenerateOptions,
@@ -576,6 +581,19 @@ export const generate = async <T>(
     ...selection.staleOutputs
   ]
 
+  const routeManifest = config.routeManifest ? createRouteManifest(cards, config) : undefined
+  let publicManifestPath: string | undefined
+
+  if (routeManifest) {
+    publicManifestPath = options.stagingDirectory ?
+      path.join(path.resolve(options.stagingDirectory), 'route-manifest.json') :
+      routeManifestPath(config, root)
+  }
+
+  if (routeManifest && publicManifestPath && !await routeManifestIsCurrent(publicManifestPath, routeManifest)) {
+    stale.push(path.relative(root, publicManifestPath))
+  }
+
   if (options.check) {
     return {
       ...(cache.key ? { cacheKey: cache.key } : {}),
@@ -600,6 +618,8 @@ export const generate = async <T>(
     await mkdir(path.dirname(manifestPath), { recursive: true })
 
     await writeManifest(manifestPath, nextManifest)
+
+    if (routeManifest && publicManifestPath) await writeRouteManifest(publicManifestPath, routeManifest)
 
     return {
       ...(cache.key ? { cacheKey: cache.key } : {}),

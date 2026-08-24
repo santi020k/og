@@ -1,6 +1,6 @@
 {
   "name": "@santi020k/og",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Generate deterministic Open Graph images with reusable presets or project-owned renderers.",
   "type": "module",
   "sideEffects": false,
@@ -15,6 +15,7 @@
       "types": "./dist/astro.d.ts",
       "default": "./dist/astro.js"
     },
+    "./astro/head": "./astro/MetadataHead.astro",
     "./content": {
       "types": "./dist/content.d.ts",
       "default": "./dist/content.js"
@@ -42,6 +43,14 @@
     "./satori": {
       "types": "./dist/renderers/satori.d.ts",
       "default": "./dist/renderers/satori.js"
+    },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "default": "./dist/schema.js"
+    },
+    "./site": {
+      "types": "./dist/site.d.ts",
+      "default": "./dist/site.js"
     }
   },
   "bin": {
@@ -49,6 +58,7 @@
   },
   "files": [
     "dist",
+    "astro",
     "docs",
     "examples",
     "README.md",
@@ -83,7 +93,10 @@
     "@types/fontkit": "^2.0.9",
     "@types/node": "^22.18.0",
     "@types/react": "^19.1.12",
+    "@typescript-eslint/eslint-plugin": "^8.67.0",
+    "@typescript-eslint/parser": "^8.67.0",
     "@vitest/coverage-v8": "^4.1.11",
+    "astro-eslint-parser": "^3.1.0",
     "cspell": "^10.0.1",
     "eslint": "^10.9.0",
     "publint": "^0.3.12",

@@ -5,6 +5,7 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 
+import { auditSite, auditToSarif } from './audit.js'
 import { compare } from './compare.js'
 import { generate } from './generate.js'
 import { createMigrationReport } from './report.js'
@@ -33,6 +34,7 @@ Usage:
   santi-og generate [options]
   santi-og check [options]
   santi-og compare [options]
+  santi-og audit --site <directory> [options]
   santi-og init [options]
   santi-og migrate --report [options]
   santi-og upgrade [options]
@@ -44,6 +46,12 @@ Options:
   --clean               Remove outputs for cards deleted from the config
   --silent              Hide per-file progress
   --json                Print a machine-readable JSON result
+  --sarif               Print SEO audit findings as SARIF
+  --site <directory>    Built site directory audited by the audit command
+  --site-url <url>      Public site URL used to resolve canonical and image URLs
+  --manifest <path>     Generated OG route manifest checked by the audit command
+  --max-image-bytes <n> Fail social images larger than this byte count
+  --unique-images       Require distinct social-image bytes for every route
   --threshold <ratio>   Maximum changed-pixel ratio accepted by compare
   --report              Analyze a config without changing consumer code
   --root <path>         Project root for upgrade (default: current directory)
@@ -327,6 +335,52 @@ const executeUpgrade = async (root: string | undefined, version: string | undefi
   process.stdout.write(`Run ${result.packageManager} install to refresh the lockfile.\n`)
 }
 
+const executeAudit = async (options: {
+  directory: string | undefined
+  json: boolean
+  manifest: string | undefined
+  maxImageBytes: string | undefined
+  root: string | undefined
+  sarif: boolean
+  siteUrl: string | undefined
+  uniqueImages: boolean
+}): Promise<void> => {
+  if (!options.directory) throw new Error('The audit command requires --site <directory>.')
+
+  if (options.json && options.sarif) throw new Error('Use either --json or --sarif, not both.')
+
+  const maxImageBytes = options.maxImageBytes === undefined ? undefined : Number(options.maxImageBytes)
+
+  if (maxImageBytes !== undefined && (!Number.isSafeInteger(maxImageBytes) || maxImageBytes <= 0)) {
+    throw new Error('--max-image-bytes must be a positive integer.')
+  }
+
+  const result = await auditSite({
+    directory: options.directory,
+    ...(options.manifest ? { manifest: options.manifest } : {}),
+    ...(maxImageBytes ? { maxImageBytes } : {}),
+    requireUniqueImages: options.uniqueImages,
+    ...(options.root ? { root: options.root } : {}),
+    ...(options.siteUrl ? { siteUrl: options.siteUrl } : {})
+  })
+
+  if (options.sarif) {
+    process.stdout.write(`${JSON.stringify(auditToSarif(result), null, 2)}\n`)
+  } else if (options.json) {
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+  } else {
+    for (const item of result.issues) {
+      process.stdout.write(`  ${item.severity.padEnd(7)} ${item.route} [${item.code}] ${item.message}\n`)
+    }
+
+    process.stdout.write(
+      `Audited ${result.pages.length} page(s): ${result.errors} error(s), ${result.warnings} warning(s).\n`
+    )
+  }
+
+  if (!result.passed) process.exitCode = 1
+}
+
 const run = async (): Promise<void> => {
   const parsed = parseArgs({
     allowPositionals: true,
@@ -337,11 +391,17 @@ const run = async (): Promise<void> => {
       force: { short: 'f', type: 'boolean' },
       help: { short: 'h', type: 'boolean' },
       json: { type: 'boolean' },
+      manifest: { type: 'string' },
+      'max-image-bytes': { type: 'string' },
       report: { type: 'boolean' },
       root: { type: 'string' },
+      sarif: { type: 'boolean' },
       silent: { short: 's', type: 'boolean' },
       threshold: { type: 'string' },
+      site: { type: 'string' },
+      'site-url': { type: 'string' },
       to: { type: 'string' },
+      'unique-images': { type: 'boolean' },
       version: { short: 'v', type: 'boolean' }
     },
     strict: true
@@ -361,12 +421,27 @@ const run = async (): Promise<void> => {
 
   const command = parsed.positionals[0] ?? 'generate'
 
-  if (!['check', 'compare', 'generate', 'init', 'migrate', 'upgrade'].includes(command)) {
+  if (!['audit', 'check', 'compare', 'generate', 'init', 'migrate', 'upgrade'].includes(command)) {
     throw new Error(`Unknown command: ${command}`)
   }
 
   if (command === 'init') {
     await initialize(parsed.values.config)
+
+    return
+  }
+
+  if (command === 'audit') {
+    await executeAudit({
+      directory: parsed.values.site,
+      json: parsed.values.json ?? false,
+      manifest: parsed.values.manifest,
+      maxImageBytes: parsed.values['max-image-bytes'],
+      root: parsed.values.root,
+      sarif: parsed.values.sarif ?? false,
+      siteUrl: parsed.values['site-url'],
+      uniqueImages: parsed.values['unique-images'] ?? false
+    })
 
     return
   }

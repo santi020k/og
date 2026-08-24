@@ -62,9 +62,41 @@ describe('generate', () => {
       { data: { title: 'Home' }, pathname: '/' },
       { data: { title: 'API' }, pathname: '/docs/api' }
     ], { directory: 'pages' })).toEqual([
-      { data: { title: 'Home' }, output: 'pages/index.webp' },
-      { data: { title: 'API' }, output: 'pages/docs--api.webp' }
+      { data: { title: 'Home' }, output: 'pages/index.webp', route: { pathname: '/' } },
+      { data: { title: 'API' }, output: 'pages/docs--api.webp', route: { pathname: '/docs/api' } }
     ])
+  })
+
+  it('writes and checks a deterministic route manifest', async () => {
+    const root = await createRoot()
+
+    const config: OgConfig<CardData> = {
+      cards: createPathCards([
+        { data: { title: 'Home' }, pathname: '/' },
+        { data: { title: 'Docs' }, pathname: '/docs' }
+      ]),
+      renderer: data => `<svg>${data.title}</svg>`,
+      root,
+      routeManifest: true
+    }
+
+    await generate(config)
+
+    const manifestPath = path.join(root, 'public/og/manifest.json')
+
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+      routes: Record<string, { images: { url?: string }[] }>
+    }
+
+    expect(Object.keys(manifest.routes)).toEqual(['/', '/docs'])
+
+    expect(manifest.routes['/']?.images[0]?.url).toBe('/og/index.webp')
+
+    expect((await generate(config, { check: true })).stale).toEqual([])
+
+    await writeFile(manifestPath, '{}\n')
+
+    expect((await generate(config, { check: true })).stale).toContain('public/og/manifest.json')
   })
 
   it('maps typed catalogs and renders multiple formats with format-aware aliases', async () => {
@@ -104,7 +136,7 @@ describe('generate', () => {
       .resolves.toBe('png:Hello')
 
     await expect(readFile(path.join(root, '.og-cache.json'), 'utf8'))
-      .resolves.toContain('"generatorVersion": "0.4.0"')
+      .resolves.toContain('"generatorVersion": "0.5.0"')
   })
 
   it('writes cards and skips unchanged outputs using content fingerprints', async () => {

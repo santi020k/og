@@ -1,3 +1,14 @@
+export {
+  type AuditedPage,
+  type AuditIssue,
+  type AuditRule,
+  type AuditRuleContext,
+  auditSite,
+  auditToSarif,
+  type SarifLog,
+  type SiteAuditOptions,
+  type SiteAuditResult
+} from './audit.js'
 export { compare, type OgComparison, type OgImageDetails } from './compare.js'
 export {
   createCards,
@@ -23,6 +34,16 @@ export {
   type PresetVariant
 } from './presets.js'
 export { createMigrationReport, type MigrationReport } from './report.js'
+export {
+  createRouteManifest,
+  type OgRouteManifest,
+  type OgRouteManifestImage,
+  type OgRouteManifestRoute,
+  routeManifestPath,
+  serializeRouteManifest,
+  writeRouteManifest
+} from './route-manifest.js'
+export { defineSite, type SiteDefinition, type SiteDefinitionOptions } from './site.js'
 export type {
   Awaitable,
   GenerateOptions,
@@ -39,6 +60,8 @@ export type {
   OgRenderContext,
   OgRenderer,
   OgRenderOutput,
+  OgRouteDescriptor,
+  OgRouteManifestOptions,
   OgSourceCollection,
   OgWorkerRenderer
 } from './types.js'
