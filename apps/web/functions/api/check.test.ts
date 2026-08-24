@@ -1,11 +1,11 @@
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { onRequestPost } from './check.js'
 
 const request = (url: string, headers: HeadersInit = {}): Request => new Request(
   'https://og.santi020k.com/api/check',
   {
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ turnstileToken: 'verified-token', url }),
     headers: {
       'cf-connecting-ip': '192.0.2.10',
       'content-type': 'application/json',
@@ -16,59 +16,78 @@ const request = (url: string, headers: HeadersInit = {}): Request => new Request
   }
 )
 
-const context = (input: Request, success = true) => {
-  const limit = vi.fn(() => Promise.resolve({ success }))
-
-  return {
-    context: {
-      env: { CHECKER_RATE_LIMITER: { limit } },
-      request: input
-    },
-    limit
-  }
-}
+const context = (input: Request) => ({
+  env: { TURNSTILE_SECRET_KEY: 'test-secret' },
+  request: input
+})
 
 describe('hosted checker protections', () => {
-  test('rejects cross-site requests before consuming rate-limit capacity', async () => {
-    const input = request('https://example.com', { origin: 'https://attacker.example' })
-    const { context: pagesContext, limit } = context(input)
-    const response = await onRequestPost(pagesContext)
-
-    expect(response.status).toBe(403)
-    expect(limit).not.toHaveBeenCalled()
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(Response.json({
+      action: 'inspect',
+      hostname: 'og.santi020k.com',
+      success: true
+    }))))
   })
 
-  test('fails closed when the deployment rate limiter is unavailable', async () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  test('rejects cross-site requests before human verification', async () => {
+    const input = request('https://example.com', { origin: 'https://attacker.example' })
+    const response = await onRequestPost(context(input))
+
+    expect(response.status).toBe(403)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  test('fails closed when the Turnstile secret is unavailable', async () => {
     const response = await onRequestPost({ env: {}, request: request('https://example.com') })
 
     expect(response.status).toBe(503)
   })
 
-  test('returns retry guidance when the client exceeds its allowance', async () => {
-    const { context: pagesContext, limit } = context(request('https://example.com'), false)
-    const response = await onRequestPost(pagesContext)
+  test('rejects oversized bodies when content length is unavailable', async () => {
+    const input = new Request('https://og.santi020k.com/api/check', {
+      body: JSON.stringify({ padding: 'x'.repeat(4_096), turnstileToken: 'verified-token', url: 'https://example.com' }),
+      headers: {
+        'content-type': 'application/json',
+        origin: 'https://og.santi020k.com'
+      },
+      method: 'POST'
+    })
 
-    expect(response.status).toBe(429)
-    expect(response.headers.get('retry-after')).toBe('60')
-    expect(limit).toHaveBeenCalledWith({ key: '192.0.2.10' })
+    input.headers.delete('content-length')
+
+    const response = await onRequestPost(context(input))
+
+    expect(response.status).toBe(413)
+    expect(fetch).not.toHaveBeenCalled()
   })
 
-  test('fails closed when the rate-limit service errors', async () => {
-    const response = await onRequestPost({
-      env: {
-        CHECKER_RATE_LIMITER: {
-          limit: () => Promise.reject(new Error('Unavailable'))
-        }
-      },
-      request: request('https://example.com')
-    })
+  test('rejects invalid or mismatched human verification', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(Response.json({
+      action: 'inspect',
+      hostname: 'attacker.example',
+      success: true
+    }))))
+
+    const response = await onRequestPost(context(request('https://example.com')))
+
+    expect(response.status).toBe(403)
+  })
+
+  test('fails closed when Turnstile verification errors', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('Unavailable'))))
+
+    const response = await onRequestPost(context(request('https://example.com')))
 
     expect(response.status).toBe(503)
   })
 
-  test('blocks private destinations after rate-limit authorization', async () => {
-    const { context: pagesContext } = context(request('http://127.0.0.1'))
-    const response = await onRequestPost(pagesContext)
+  test('blocks private destinations after human verification', async () => {
+    const response = await onRequestPost(context(request('http://127.0.0.1')))
 
     expect(response.status).toBe(403)
     await expect(response.json()).resolves.toEqual({

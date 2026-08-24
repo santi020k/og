@@ -19,6 +19,7 @@ import SiteHeader from '../components/SiteHeader.astro'
 import BaseLayout from '../layouts/BaseLayout.astro'
 
 const description = 'Inspect Open Graph images, social metadata, canonical URLs, robots directives, and structured data for public or localhost websites.'
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '1x00000000000000000000AA'
 
 const localCommands = [
   {
@@ -50,7 +51,7 @@ const localCommands = [
       <Card as="section" class="checker-form-card">
         <CardHeader>
           <CardTitle as="h2" id="checker-form-title">Inspect a website</CardTitle>
-          <CardDescription as="p">Enter a public URL. No account, cookies, or page content is stored.</CardDescription>
+          <CardDescription as="p">Enter a public URL. No account or inspected page content is stored.</CardDescription>
         </CardHeader>
         <CardContent>
           <form id="checker-form" class="checker-form">
@@ -72,6 +73,13 @@ const localCommands = [
               </div>
               <p id="checker-url-help">Public URLs run here. Localhost URLs are handed to the local CLI.</p>
             </Field>
+            <div
+              class="cf-turnstile checker-verification"
+              data-sitekey={turnstileSiteKey}
+              data-action="inspect"
+              data-theme="dark"
+              data-size="flexible"
+            ></div>
           </form>
 
           <div id="checker-loading" class="checker-state" role="status" hidden>
@@ -397,8 +405,12 @@ const localCommands = [
       loading.hidden = false
 
       try {
+        const turnstileToken = form.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value
+
+        if (!turnstileToken) throw new Error('Complete the human verification and try again.')
+
         const response = await fetch('/api/check', {
-          body: JSON.stringify({ url: url.href }),
+          body: JSON.stringify({ turnstileToken, url: url.href }),
           headers: { 'content-type': 'application/json' },
           method: 'POST'
         })
@@ -414,6 +426,9 @@ const localCommands = [
         setText('[data-error-message]', error instanceof Error ? error.message : 'The website could not be inspected.')
         errorAlert.hidden = false
       } finally {
+        const turnstileWindow = window as Window & { turnstile?: { reset: () => void } }
+
+        turnstileWindow.turnstile?.reset()
         submit.disabled = false
         submit.removeAttribute('aria-busy')
         loading.hidden = true
@@ -424,4 +439,6 @@ const localCommands = [
 
     if (input && query) input.value = query
   </script>
+
+  <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </BaseLayout>

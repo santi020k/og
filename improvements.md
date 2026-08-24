@@ -92,8 +92,9 @@ reviewable.
 
 - Preserve the build-time dependency model: the package remains a development dependency for
   static generation, and the renderer toolchain is not part of the deployed static application.
-- Protect the hosted checker with same-origin enforcement, a Cloudflare rate-limit binding,
-  stricter DNS response validation, bounded fetches, and the Workers public-network egress boundary.
+- Protect the hosted checker with same-origin enforcement, server-validated single-use Cloudflare
+  Turnstile tokens, stricter DNS response validation, bounded fetches, and the Workers public-network
+  egress boundary.
 - Build registry-independent plain Node.js, Astro, and Next.js consumers from the packed candidate,
   then repeat the same builds from the exact npm artifact before tagging the release.
 - Upgrade outdated dependencies to the latest stable versions compatible with Node.js 22 and 24

@@ -71,7 +71,8 @@ The stable package subpaths are:
 The 0.9 cycle keeps the export surface frozen, runs the complete suite on Node.js 22 and 24, and
 builds plain Node.js, Astro, and Next.js consumers from both the packed candidate and the published
 registry artifact. The hosted checker is protected by application URL policy, same-origin request
-validation, Cloudflare rate limiting, and the Workers public-network egress boundary.
+validation, server-validated single-use Turnstile tokens, and the Workers public-network egress
+boundary.
 
 The executable acceptance criteria live in [the release checklist](./docs/release-acceptance.md).
 Any required breaking correction discovered during this cycle should ship before 1.0 instead of

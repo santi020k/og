@@ -27,8 +27,8 @@ release is accepted only when every required item below has evidence from the re
 
 ## Hosted checker
 
-- Requests must originate from the checker site, pass the Cloudflare rate-limit binding, and target
-  HTTP or HTTPS on a standard port.
+- Requests must originate from the checker site, pass a server-validated single-use Cloudflare
+  Turnstile challenge, and target HTTP or HTTPS on a standard port.
 - Literal and DNS-resolved private or reserved destinations are rejected before fetch, including
   every redirect and social-image request.
 - HTML and image response limits, redirect limits, and a shared timeout bound outbound work.
@@ -40,6 +40,6 @@ release is accepted only when every required item below has evidence from the re
 - The packed artifact passes `publint`, contains the documented Astro components and stability
   contract, and exposes only the reviewed package subpaths.
 - npm publication uses provenance and is verified from the registry.
-- The website deployment succeeds and the live checker accepts a public URL, rejects a private
-  address, and returns rate-limit guidance when capacity is exceeded.
+- The website deployment succeeds and the live checker accepts a verified public URL, rejects
+  missing or invalid verification, and rejects a private address.
 - The matching Git tag and GitHub release are created only after registry verification succeeds.
