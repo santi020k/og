@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.1.1 - 2026-08-25
+
+- Normalize WebP, AVIF, and GIF card images to deterministic embedded PNG data so Sharp's SVG
+  renderer preserves visible pixels for contain and cover presentation modes.
+
 ## 1.1.0 - 2026-08-25
 
 - Add backward-compatible per-preset and per-card image presentation controls for contain/cover

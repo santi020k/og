@@ -127,6 +127,37 @@ describe('preset renderer', () => {
     expect(output).toContain('x="842" y="220" width="222" height="224" preserveAspectRatio="xMidYMid meet"')
   })
 
+  it('normalizes WebP logos so the raster renderer preserves visible pixels', async () => {
+    const root = await createRoot()
+    const logoPath = path.join(root, 'wide-logo.webp')
+
+    await sharp({
+      create: { background: '#ef4444', channels: 4, height: 40, width: 120 }
+    }).webp({ lossless: true }).toFile(logoPath)
+
+    const renderer = createPresetRenderer()
+
+    const output = await renderer({
+      image: logoPath,
+      imagePresentation: { background: '#f8fafc', fit: 'contain', padding: 50 },
+      title: 'WebP logo'
+    }, {
+      format: 'png',
+      height: 630,
+      outputPath: path.join(root, 'logo-card.png'),
+      root,
+      width: 1200
+    })
+
+    const pixel = await sharp(output as Buffer)
+      .extract({ height: 1, left: 952, top: 331, width: 1 })
+      .removeAlpha()
+      .raw()
+      .toBuffer()
+
+    expect([...pixel]).toEqual([239, 68, 68])
+  })
+
   it('keeps cover cropping as the default and rejects invalid image padding', async () => {
     const context = {
       format: 'svg' as const,
