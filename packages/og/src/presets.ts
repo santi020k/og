@@ -1,6 +1,8 @@
 import { access, readFile } from 'node:fs/promises'
 import path from 'node:path'
 
+import sharp from 'sharp'
+
 import { createSharpRenderer, type SharpRendererOptions } from './renderers/sharp.js'
 import { defineConfig } from './config.js'
 import { markPresetRenderer } from './preset-marker.js'
@@ -104,6 +106,11 @@ const MIME_TYPES: Readonly<Record<string, string>> = {
   '.webp': 'image/webp'
 }
 
+const SVG_EMBEDDABLE_RASTER_TYPES = new Set([
+  'image/jpeg',
+  'image/png'
+])
+
 const escapeXml = (value: string): string => value
   .replaceAll('&', '&amp;')
   .replaceAll('<', '&lt;')
@@ -126,7 +133,8 @@ const exists = async (filePath: string): Promise<boolean> => {
 const resolveImage = async (
   source: PresetImage | undefined,
   context: OgRenderContext,
-  remoteImages: PresetRendererOptions['remoteImages']
+  remoteImages: PresetRendererOptions['remoteImages'],
+  normalizeRaster = false
 ): Promise<string | undefined> => {
   if (!source) return undefined
 
@@ -138,7 +146,19 @@ const resolveImage = async (
     source = await materializeRemoteImage(source, context.root, remoteImages)
   }
 
-  if (source.startsWith('data:')) return source
+  if (source.startsWith('data:')) {
+    const match = /^data:([^;,]+);base64,(.+)$/u.exec(source)
+
+    if (!normalizeRaster || !match || SVG_EMBEDDABLE_RASTER_TYPES.has(match[1] ?? '')) return source
+
+    if (match[1] === 'image/svg+xml') return source
+
+    const normalized = await sharp(Buffer.from(match[2] ?? '', 'base64'))
+      .png({ adaptiveFiltering: true, compressionLevel: 9 })
+      .toBuffer()
+
+    return `data:image/png;base64,${normalized.toString('base64')}`
+  }
 
   if (/^https?:\/\//u.test(source)) {
     throw new Error('Remote preset image URLs must use a pinned { url, sha256, type } descriptor.')
@@ -152,7 +172,17 @@ const resolveImage = async (
 
   if (!mime) throw new Error(`Unsupported preset image format: ${source}`)
 
-  return `data:${mime};base64,${(await readFile(filePath)).toString('base64')}`
+  const bytes = await readFile(filePath)
+
+  if (!normalizeRaster || mime === 'image/svg+xml' || SVG_EMBEDDABLE_RASTER_TYPES.has(mime)) {
+    return `data:${mime};base64,${bytes.toString('base64')}`
+  }
+
+  const normalized = await sharp(bytes)
+    .png({ adaptiveFiltering: true, compressionLevel: 9 })
+    .toBuffer()
+
+  return `data:image/png;base64,${normalized.toString('base64')}`
 }
 
 const textLines = (parameters: {
@@ -232,7 +262,7 @@ const renderPresetSvg = async <T extends PresetCardData>(
   const accent = data.accent ?? theme.accent
   const brand = { name: 'Open Graph', ...options.brand, ...data.brand }
   const domain = data.domain ?? brand.domain
-  const image = await resolveImage(data.image, context, options.remoteImages)
+  const image = await resolveImage(data.image, context, options.remoteImages, true)
   const logo = await resolveImage(brand.logo, context, options.remoteImages)
 
   const imagePresentation = {
