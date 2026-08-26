@@ -104,6 +104,54 @@ describe('preset renderer', () => {
     expect(output).toContain('<g data-accent="#ff3366"><text>42</text></g>')
   })
 
+  it('presents logos without requiring consumer-side raster preprocessing', async () => {
+    const renderer = createPresetRenderer({
+      imagePresentation: { background: '#111827', fit: 'contain', padding: 48 }
+    })
+
+    const output = await renderer({
+      image: 'data:image/svg+xml;base64,PHN2Zy8+',
+      imagePresentation: { background: '#f8fafc', padding: 64 },
+      title: 'Logo card',
+      variant: 'product'
+    }, {
+      format: 'svg',
+      height: 630,
+      outputPath: '/tmp/logo-card.svg',
+      root: '/tmp',
+      width: 1200
+    })
+
+    expect(output).toContain('<rect x="778" y="156" width="350" height="352" rx="40" fill="#f8fafc"/>')
+
+    expect(output).toContain('x="842" y="220" width="222" height="224" preserveAspectRatio="xMidYMid meet"')
+  })
+
+  it('keeps cover cropping as the default and rejects invalid image padding', async () => {
+    const context = {
+      format: 'svg' as const,
+      height: 630,
+      outputPath: '/tmp/cover-card.svg',
+      root: '/tmp',
+      width: 1200
+    }
+
+    const renderer = createPresetRenderer()
+
+    const output = await renderer({
+      image: 'data:image/png;base64,Y292ZXI=',
+      title: 'Cover card'
+    }, context)
+
+    expect(output).toContain('x="778" y="156" width="350" height="352" preserveAspectRatio="xMidYMid slice"')
+
+    await expect(renderer({
+      image: 'data:image/png;base64,Y292ZXI=',
+      imagePresentation: { padding: 175 },
+      title: 'Invalid padding'
+    }, context)).rejects.toThrow('padding must be between 0 and 174 pixels')
+  })
+
   it('downloads pinned remote images once into a verified content-addressed cache', async () => {
     const root = await createRoot()
 

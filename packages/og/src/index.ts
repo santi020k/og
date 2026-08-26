@@ -69,6 +69,8 @@ export {
   type PresetConfig,
   type PresetDecorationContext,
   type PresetImage,
+  type PresetImageFit,
+  type PresetImagePresentation,
   type PresetRemoteImage,
   type PresetRemoteImageOptions,
   type PresetRemoteImageType,

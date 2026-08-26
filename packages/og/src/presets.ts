@@ -26,6 +26,16 @@ export interface PresetBrand {
 }
 
 export type PresetImage = PresetRemoteImage | string
+export type PresetImageFit = 'contain' | 'cover'
+
+export interface PresetImagePresentation {
+  /** Surface behind the image. Defaults to the preset panel color. */
+  background?: string
+  /** Preserve the complete image or fill and crop the visual slot. Defaults to cover. */
+  fit?: PresetImageFit
+  /** Inset from every edge of the visual slot in output pixels. Defaults to 0. */
+  padding?: number
+}
 
 export interface PresetCardData {
   accent?: string
@@ -35,6 +45,7 @@ export interface PresetCardData {
   domain?: string
   eyebrow?: string
   image?: PresetImage
+  imagePresentation?: PresetImagePresentation
   title: string
   variant?: PresetVariant
 }
@@ -62,6 +73,8 @@ export interface PresetRendererOptions<T extends PresetCardData = PresetCardData
   ) => Awaitable<string | undefined>
   /** Opt into content-addressed downloads for remote image descriptors. */
   remoteImages?: false | PresetRemoteImageOptions
+  /** Default presentation for card images. Individual cards can override each field. */
+  imagePresentation?: PresetImagePresentation
   sharp?: Omit<SharpRendererOptions<never>, 'renderSvg'>
   theme?: Partial<PresetTheme>
   typography?: PresetTypographyOptions
@@ -221,6 +234,20 @@ const renderPresetSvg = async <T extends PresetCardData>(
   const domain = data.domain ?? brand.domain
   const image = await resolveImage(data.image, context, options.remoteImages)
   const logo = await resolveImage(brand.logo, context, options.remoteImages)
+
+  const imagePresentation = {
+    background: theme.panel,
+    fit: 'cover' as PresetImageFit,
+    padding: 0,
+    ...options.imagePresentation,
+    ...data.imagePresentation
+  }
+
+  if (!Number.isFinite(imagePresentation.padding) ||
+    imagePresentation.padding < 0 || imagePresentation.padding >= 175) {
+    throw new Error('Preset image presentation padding must be between 0 and 174 pixels.')
+  }
+
   const hasVisual = Boolean(image) || variant !== 'simple'
   const font = await loadPresetFont(options.typography, context.root)
   const maximumTitleWidth = hasVisual ? 650 : Math.min(990, context.width - 144)
@@ -264,9 +291,14 @@ const renderPresetSvg = async <T extends PresetCardData>(
   const badge = data.badge ?? data.eyebrow ?? variantLabel(variant)
   const contentWidth = hasVisual ? 650 : 990
   const descriptionY = 354 + (titleLines.length - 1) * (titleSize * 1.06) + 46
+  const imageX = 778 + imagePresentation.padding
+  const imageY = 156 + imagePresentation.padding
+  const imageWidth = 350 - imagePresentation.padding * 2
+  const imageHeight = 352 - imagePresentation.padding * 2
+  const imageFit = imagePresentation.fit === 'contain' ? 'meet' : 'slice'
 
   const visual = image ?
-    `<g clip-path="url(#visual)"><rect x="778" y="156" width="350" height="352" rx="40" fill="${theme.panel}"/><image href="${escapeXml(image)}" x="778" y="156" width="350" height="352" preserveAspectRatio="xMidYMid slice"/></g><rect x="778" y="156" width="350" height="352" rx="40" fill="none" stroke="white" stroke-opacity="0.16"/>` :
+    `<g clip-path="url(#visual)"><rect x="778" y="156" width="350" height="352" rx="40" fill="${escapeXml(imagePresentation.background)}"/><image href="${escapeXml(image)}" x="${imageX}" y="${imageY}" width="${imageWidth}" height="${imageHeight}" preserveAspectRatio="xMidYMid ${imageFit}"/></g><rect x="778" y="156" width="350" height="352" rx="40" fill="none" stroke="white" stroke-opacity="0.16"/>` :
     ''
 
   const customDecoration = await options.decoration?.(data, context, { accent, theme })

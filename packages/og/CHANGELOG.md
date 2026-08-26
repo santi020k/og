@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.1.0 - 2026-08-25
+
+- Add backward-compatible per-preset and per-card image presentation controls for contain/cover
+  fitting, background surfaces, and deterministic padding.
+- Keep cover cropping as the default while allowing transparent square, wide, and tall logos to
+  render directly without consumer-side raster preprocessing.
+
 ## 1.0.0 - 2026-08-24
 
 - Establish the documented package subpaths, runtime exports, configuration shapes, CLI commands,
