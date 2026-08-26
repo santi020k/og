@@ -40,6 +40,28 @@ export default definePresetConfig({
 `createPathCards` turns `/`, `/docs/api`, and encoded URL segments into stable WebP outputs. Set
 `extension` or `directory` once instead of repeating output mapping for every page.
 
+### Present covers and logos without preprocessing
+
+Preset images use cover cropping by default. For transparent logos or product marks, set an image
+surface, contain fitting, and an inset directly on the card. The renderer preserves the source
+format and aspect ratio, including SVG, WebP, PNG, and pinned remote images:
+
+```js
+{
+  image: 'public/project-logo.svg',
+  imagePresentation: {
+    background: '#f8fafc',
+    fit: 'contain',
+    padding: 64,
+  },
+  title: 'Project name',
+  variant: 'product',
+}
+```
+
+Set `preset.imagePresentation` to establish site-wide defaults. A card's
+`imagePresentation` fields override those defaults without changing existing cover cards.
+
 ## Reuse page data for metadata
 
 Replace separate page SEO objects and card definitions with one portable page definition. Map
