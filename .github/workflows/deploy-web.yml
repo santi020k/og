@@ -38,19 +38,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
+      - name: Set up pnpm workspace
+        uses: santi020k/quality/actions/setup-pnpm@eec1701b98bcc0b76d36af288ee78a0369cd84cc # v1
         with:
-          version: 10.32.1
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
+          pnpm-version: 10.32.1
           node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Build website
         run: pnpm run build
