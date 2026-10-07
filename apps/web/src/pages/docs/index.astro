@@ -276,6 +276,9 @@ pnpm exec santi-og audit --site dist --site-url https://example.com --sarif
 pnpm exec santi-og audit --site dist --site-url https://example.com --standards
 pnpm exec santi-og migrate --report --json
 pnpm exec santi-og upgrade --to 1.0.0`
+
+const qualityExample = `quality check
+quality check --only santi-og`
 ---
 
 <BaseLayout title="Documentation" description={description}>
@@ -563,7 +566,10 @@ pnpm exec santi-og upgrade --to 1.0.0`
               </tbody>
             </table>
           </div>
-
+          <h3>Native Quality integration</h3>
+          <p><a href="https://quality.santi020k.com/adapters/"><code>quality</code></a> automatically detects each JavaScript workspace that declares <code>@santi020k/og</code> and converts <code>santi-og check --json</code> results into terminal, JSON, SARIF, GitHub annotation, and baseline findings.</p>
+          <pre tabindex="0" aria-label="Code example"><code>{qualityExample}</code></pre>
+          <div class="docs-note"><strong>Hooks verify; commands generate.</strong><p>A pre-push validation command may include <code>quality check</code>. Keep <code>santi-og generate</code> explicit so a hook never silently modifies tracked assets.</p></div>
         </section>
 
         <section id="config-reference">
