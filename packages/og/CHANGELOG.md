@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.2.0 - 2026-10-07
+
+- Add opt-in content-versioned route manifest URLs and `getRouteManifestImage` for selecting
+  generated metadata images, with deterministic invalidation from the full generation fingerprint.
+- Document native Quality integration and add scheduled production metadata score checks.
+- Keep the responsive mobile menu attached to its header.
 - Refine all four neutral preset compositions with quieter details, bounded header labels,
   footer-safe long copy, complete layout scaling, and raster header-logo normalization.
 - Refresh compatible dependencies and security patches; retain tested TypeScript and Satori
