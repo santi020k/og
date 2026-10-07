@@ -6,7 +6,7 @@
 
 - Align deployed website canonicals, navigation, and sitemap routes with Cloudflare directory URLs,
   and reject mismatches during the website build.
-- Use a compatible npm publishing client with trusted-publisher support in the release workflow.
+- Publish with a compatible npm client and GitHub OIDC trusted publishing, without an npm token.
 
 - Contain decoded social-image audit paths within the build and detect multi-hop redirect loops.
 - Give website routes distinct fingerprinted social cards and contextual JSON-LD; enforce built
