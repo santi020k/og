@@ -484,14 +484,46 @@ export const createRedirectsAuditRule = (
   const issues: AuditIssue[] = []
   const routes = localRoutes(context.pages)
   const severity = options.severity ?? 'warning'
+  const redirects = new Map<string, string>()
+
+  for (const page of context.pages) {
+    if (!page.redirect) continue
+
+    try {
+      const url = resolveUrl(page.redirect, resolveUrl(page.route, context.siteUrl))
+
+      if (isLocalUrl(url, context.siteUrl)) {
+        redirects.set(normalizeRoute(page.route), normalizeRoute(url.pathname))
+      }
+    } catch {
+      // Invalid URLs are reported against their source page below.
+    }
+  }
 
   for (const page of context.pages.filter(candidate => candidate.redirect)) {
     try {
-      const url = resolveUrl(page.redirect ?? '', context.siteUrl)
+      const url = resolveUrl(page.redirect ?? '', resolveUrl(page.route, context.siteUrl))
       const target = normalizeRoute(url.pathname)
+      const visited = new Set<string>([normalizeRoute(page.route)])
+      let destination: string | undefined = target
+      let loop = false
 
-      if (isLocalUrl(url, context.siteUrl) && target === normalizeRoute(page.route)) {
-        issues.push(issue(page.file, page.route, 'redirect-loop', 'Redirect points to its own route.', 'error'))
+      if (isLocalUrl(url, context.siteUrl)) {
+        while (destination !== undefined) {
+          if (visited.has(destination)) {
+            loop = true
+
+            break
+          }
+
+          visited.add(destination)
+
+          destination = redirects.get(destination)
+        }
+      }
+
+      if (loop) {
+        issues.push(issue(page.file, page.route, 'redirect-loop', 'Redirect chain contains a loop.', 'error'))
       } else if ((options.requireLocalTargets ?? true) && isLocalUrl(url, context.siteUrl) && !routes.has(target)) {
         issues.push(issue(
           page.file,

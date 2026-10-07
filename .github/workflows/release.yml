@@ -6,7 +6,7 @@ on:
       version:
         description: Version to publish
         required: true
-        default: 1.1.1
+        default: 1.2.0
         type: string
 
 permissions:
@@ -44,6 +44,11 @@ jobs:
         env:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "Releases must run from merged main."
+            exit 1
+          fi
+
           PACKAGE_VERSION=$(node -p "require('./packages/og/package.json').version")
 
           if [ "$PACKAGE_VERSION" != "$RELEASE_VERSION" ]; then

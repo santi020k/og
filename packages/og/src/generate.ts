@@ -581,7 +581,11 @@ export const generate = async <T>(
     ...selection.staleOutputs
   ]
 
-  const routeManifest = config.routeManifest ? createRouteManifest(cards, config) : undefined
+  const imageVersions = Object.fromEntries(preparedCards.flatMap(item => (
+    item.destinations.map(destination => [destination.key, item.fingerprint])
+  )))
+
+  const routeManifest = config.routeManifest ? createRouteManifest(cards, config, { imageVersions }) : undefined
   let publicManifestPath: string | undefined
 
   if (routeManifest) {

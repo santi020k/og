@@ -17,6 +17,8 @@ export interface OgRouteManifestImage {
   output: string
   primary: boolean
   url?: string
+  /** Content fingerprint prefix used to invalidate URL-based social-image caches. */
+  version?: string
   width: number
 }
 
@@ -50,7 +52,8 @@ const target = (value: string | OgOutputTarget, directory?: string): OgOutputTar
 const publicUrl = (
   destination: OgOutputTarget,
   options: OgRouteManifestOptions,
-  outputDirectory: string
+  outputDirectory: string,
+  version?: string
 ): string | undefined => {
   const configured = destination.directory ? options.publicPaths?.[destination.directory] : options.publicPath
   const inferred = destination.directory ? undefined : `/${outputDirectory.replace(/^public\/?/u, '')}`
@@ -58,16 +61,36 @@ const publicUrl = (
 
   if (!base) return undefined
 
-  return `/${[
+  const pathname = `/${[
     base.replace(/^\/+|\/+$/gu, ''),
     destination.output.replace(/^\//u, '')
   ].filter(Boolean).join('/')}`
+
+  return version ? `${pathname}?v=${encodeURIComponent(version)}` : pathname
+}
+
+const normalizePathname = (value: string): string => {
+  const pathname = value.split(/[?#]/u, 1)[0] ?? '/'
+  const normalized = `/${pathname.replace(/^\/+|\/+$/gu, '')}`
+
+  return normalized === '/' ? normalized : normalized.replace(/\/$/u, '')
+}
+
+export interface CreateRouteManifestOptions {
+  /** Full fingerprints keyed by output destination. Used by generate() for cache-busted URLs. */
+  imageVersions?: Readonly<Record<string, string>>
+}
+
+export interface GetRouteManifestImageOptions {
+  format?: OgFormat
+  primary?: boolean
 }
 
 /** Create a deterministic route-to-card manifest without writing it. */
 export const createRouteManifest = <T>(
   cards: readonly OgCard<T>[],
-  config: Pick<OgConfig<T>, 'height' | 'outputDirectory' | 'routeManifest' | 'width'> = {}
+  config: Pick<OgConfig<T>, 'height' | 'outputDirectory' | 'routeManifest' | 'width'> = {},
+  generation: CreateRouteManifestOptions = {}
 ): OgRouteManifest => {
   const options = typeof config.routeManifest === 'object' ? config.routeManifest : {}
   const outputDirectory = config.outputDirectory ?? 'public/og'
@@ -94,7 +117,16 @@ export const createRouteManifest = <T>(
       ]
 
       destinations.forEach((destination, index) => {
-        const url = publicUrl(destination, options, outputDirectory)
+        const fingerprint = generation.imageVersions?.[
+          destination.directory ? `${destination.directory}:${destination.output}` : destination.output
+        ]
+
+        if (options.cacheBust && !fingerprint) {
+          throw new Error(`Missing content fingerprint for cache-busted OG image: ${destination.output}`)
+        }
+
+        const version = options.cacheBust && fingerprint ? fingerprint.slice(0, 12) : undefined
+        const url = publicUrl(destination, options, outputDirectory, version)
 
         images.push({
           ...(destination.directory ? { directory: destination.directory } : {}),
@@ -103,6 +135,7 @@ export const createRouteManifest = <T>(
           output: destination.output,
           primary: index === 0,
           ...(url ? { url } : {}),
+          ...(version ? { version } : {}),
           width: card.width ?? config.width ?? 1200
         })
       })
@@ -121,6 +154,23 @@ export const createRouteManifest = <T>(
   }
 
   return { generatorVersion: GENERATOR_VERSION, routes, version: 1 }
+}
+
+/** Find the generated image metadata for a route, including its cache-busted public URL. */
+export const getRouteManifestImage = (
+  manifest: OgRouteManifest,
+  pathname: string,
+  options: GetRouteManifestImageOptions = {}
+): OgRouteManifestImage | undefined => {
+  const route = Object.values(manifest.routes).find(candidate => (
+    normalizePathname(candidate.pathname) === normalizePathname(pathname)
+  ))
+
+  const primary = options.primary ?? true
+
+  return route?.images.find(image => (
+    image.primary === primary && (options.format === undefined || image.format === options.format)
+  ))
 }
 
 export const routeManifestPath = <T>(config: OgConfig<T>, root: string): string => {

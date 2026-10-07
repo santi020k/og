@@ -1,0 +1,78 @@
+name: Production metadata score
+
+on:
+  schedule:
+    - cron: '17 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    name: ${{ matrix.name }} scores 100
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: aaronmgz
+            url: https://aaronmgz.com
+          - name: Astro Doctor
+            url: https://doctor.santi020k.com
+          - name: Between Contractions
+            url: https://between.santi020k.com
+          - name: Commitprompt
+            url: https://commitprompt.santi020k.com
+          - name: Cult
+            url: https://cult.santi020k.com
+          - name: ESLint Config
+            url: https://eslint.santi020k.com
+          - name: Lumen UI
+            url: https://lumen.santi020k.com
+          - name: MeMudo.ai
+            url: https://memudo.ai
+          - name: Open Graph
+            url: https://og.santi020k.com
+          - name: PostLens
+            url: https://postlens.santi020k.com
+          - name: Quality
+            url: https://quality.santi020k.com
+          - name: santi020k.com
+            url: https://santi020k.com
+          - name: Santi020k Theme
+            url: https://theme.santi020k.com
+          - name: Workscene
+            url: https://workscene.santi020k.com
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @santi020k/og build
+      - name: Inspect production metadata
+        env:
+          SITE_URL: ${{ matrix.url }}
+        run: |
+          node packages/og/dist/cli.js inspect "$SITE_URL" --json > inspection.json
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises'
+
+          const inspection = JSON.parse(await readFile('inspection.json', 'utf8'))
+
+          console.log(`Score ${inspection.score}/100 for ${inspection.finalUrl}`)
+
+          if (inspection.score !== 100) {
+            for (const check of inspection.checks) {
+              if (check.status !== 'pass') console.error(`${check.status}: ${check.code} — ${check.message}`)
+            }
+
+            process.exitCode = 1
+          }
+          NODE

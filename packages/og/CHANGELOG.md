@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+## 1.2.0 - 2026-10-07
+
+- Contain decoded social-image audit paths within the build and detect multi-hop redirect loops.
+- Give website routes distinct fingerprinted social cards and contextual JSON-LD; enforce built
+  sitemap, robots, manifest, and image audits. Add current-section docs navigation and back-to-top.
+- Bound remote-image downloads while reading, including chunked responses without Content-Length.
+- Add opt-in content-versioned route manifest URLs and `getRouteManifestImage` for selecting
+  generated metadata images, with deterministic invalidation from the full generation fingerprint.
+- Document native Quality integration and add scheduled production metadata score checks.
+- Keep the responsive mobile menu attached to its header.
+- Refine all four neutral preset compositions with quieter details, bounded header labels,
+  footer-safe long copy, complete layout scaling, and raster header-logo normalization.
+- Refresh compatible dependencies and security patches; retain tested TypeScript and Satori
+  versions where newer releases fail the supported toolchain or Node.js renderer.
+- Refresh the documentation site with OG’s mint palette, shared typography and Lumen 4, including
+  light and dark modes, inset ribbon navigation, optional reveals, and Astro page transitions.
+
+Preset appearance changes deliberately regenerate cached cards (preset version 6). Existing
+configuration and renderer contracts remain compatible. Inspect regenerated tracked assets before
+publishing; custom renderers remain available for projects requiring an exact composition.
+
 ## 1.1.1 - 2026-08-25
 
 - Normalize WebP, AVIF, and GIF card images to deterministic embedded PNG data so Sharp's SVG

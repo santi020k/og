@@ -19,12 +19,18 @@
   },
   "devDependencies": {
     "@santi020k/commitprompt": "1.1.0",
-    "cspell": "^10.1.0",
-    "turbo": "^2.10.11",
-    "wrangler": "^4.125.0"
+    "cspell": "^10.3.6",
+    "turbo": "^2.11.7",
+    "wrangler": "^4.148.0"
   },
   "engines": {
     "node": ">=22.18.0"
   },
-  "packageManager": "pnpm@10.32.1"
+  "packageManager": "pnpm@10.32.1",
+  "pnpm": {
+    "overrides": {
+      "satori>fflate": "0.7.5",
+      "miniflare>sharp": "0.35.5"
+    }
+  }
 }

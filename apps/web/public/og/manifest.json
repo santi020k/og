@@ -1,0 +1,69 @@
+{
+  "generatorVersion": "1.2.0",
+  "routes": {
+    "/": {
+      "alt": "Generate deterministic Open Graph images with @santi020k/og",
+      "description": "Generate polished, deterministic Open Graph images from reusable presets or your own renderer. Built for Astro, Next.js, and plain Node.js.",
+      "images": [
+        {
+          "format": "webp",
+          "height": 630,
+          "output": "pages/home.webp",
+          "primary": true,
+          "url": "/og/pages/home.webp?v=72d5743027ca",
+          "version": "72d5743027ca",
+          "width": 1200
+        }
+      ],
+      "pathname": "/",
+      "schemaTypes": [
+        "WebPage",
+        "SoftwareSourceCode"
+      ],
+      "title": "Open Graph image generation"
+    },
+    "/docs": {
+      "alt": "@santi020k/og documentation: from content to social cards",
+      "description": "Learn visual presets, portable metadata, content discovery, runtime responses, JSON-LD, and built-site audits with @santi020k/og.",
+      "images": [
+        {
+          "format": "webp",
+          "height": 630,
+          "output": "pages/docs.webp",
+          "primary": true,
+          "url": "/og/pages/docs.webp?v=49cb8cc4fb0b",
+          "version": "49cb8cc4fb0b",
+          "width": 1200
+        }
+      ],
+      "pathname": "/docs",
+      "schemaTypes": [
+        "WebPage",
+        "BreadcrumbList"
+      ],
+      "title": "Documentation"
+    },
+    "/checker": {
+      "alt": "Inspect social previews and website metadata with the OG checker",
+      "description": "Inspect Open Graph images, social metadata, canonical URLs, robots directives, and structured data for public or localhost websites.",
+      "images": [
+        {
+          "format": "webp",
+          "height": 630,
+          "output": "pages/checker.webp",
+          "primary": true,
+          "url": "/og/pages/checker.webp?v=9b1016189853",
+          "version": "9b1016189853",
+          "width": 1200
+        }
+      ],
+      "pathname": "/checker",
+      "schemaTypes": [
+        "WebPage",
+        "WebApplication"
+      ],
+      "title": "OG & metadata checker"
+    }
+  },
+  "version": 1
+}

@@ -101,6 +101,70 @@ const validateFormat = async (bytes: Uint8Array, source: PresetRemoteImage): Pro
   }
 }
 
+const readRemoteImage = async (
+  response: Response,
+  source: PresetRemoteImage,
+  maxBytes: number
+): Promise<Uint8Array> => {
+  const reader: ReadableStreamDefaultReader<unknown> | undefined = response.body?.getReader()
+
+  try {
+    if (!response.ok) throw new Error(`Remote preset image request failed (${response.status}): ${source.url}`)
+
+    const responseType = response.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase()
+
+    if (responseType && responseType !== source.type) {
+      throw new Error(`Remote preset image type mismatch for ${source.url}: expected ${source.type}, received ${responseType}`)
+    }
+
+    const declaredLength = Number(response.headers.get('content-length'))
+
+    if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+      throw new Error(`Remote preset image exceeds ${maxBytes} bytes: ${source.url}`)
+    }
+
+    const chunks: Uint8Array[] = []
+    let size = 0
+
+    while (reader) {
+      const { done, value } = await reader.read()
+
+      if (done) break
+
+      if (!(value instanceof Uint8Array)) throw new TypeError('Remote preset image body contains invalid bytes.')
+
+      if (value.byteLength > maxBytes - size) {
+        throw new Error(`Remote preset image exceeds ${maxBytes} bytes: ${source.url}`)
+      }
+
+      size += value.byteLength
+
+      chunks.push(value)
+    }
+
+    const bytes = new Uint8Array(size)
+    let offset = 0
+
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset)
+
+      offset += chunk.byteLength
+    }
+
+    return bytes
+  } catch (error) {
+    try {
+      await reader?.cancel(error)
+    } catch {
+      // Preserve the validation or read failure if the response stream also fails to cancel.
+    }
+
+    throw error
+  } finally {
+    reader?.releaseLock()
+  }
+}
+
 /** Download a pinned remote image once and reuse its verified content-addressed cache file. */
 export const materializeRemoteImage = async (
   source: PresetRemoteImage,
@@ -132,25 +196,7 @@ export const materializeRemoteImage = async (
   }
 
   const response = await fetch(source.url, { signal: AbortSignal.timeout(timeout) })
-
-  if (!response.ok) throw new Error(`Remote preset image request failed (${response.status}): ${source.url}`)
-
-  const responseType = response.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase()
-
-  if (responseType && responseType !== source.type) {
-    throw new Error(`Remote preset image type mismatch for ${source.url}: expected ${source.type}, received ${responseType}`)
-  }
-
-  const declaredLength = Number(response.headers.get('content-length'))
-
-  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
-    throw new Error(`Remote preset image exceeds ${maxBytes} bytes: ${source.url}`)
-  }
-
-  const bytes = new Uint8Array(await response.arrayBuffer())
-
-  if (bytes.byteLength > maxBytes) throw new Error(`Remote preset image exceeds ${maxBytes} bytes: ${source.url}`)
-
+  const bytes = await readRemoteImage(response, source, maxBytes)
   const received = digest(bytes)
 
   if (received !== sha256) {

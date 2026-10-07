@@ -1,4 +1,5 @@
 import { definePresetConfig } from '@santi020k/og/presets'
+import { pages, site } from './site.mjs'
 
 const examples = [
   {
@@ -26,26 +27,31 @@ const examples = [
     accent: '#b58cff',
     badge: 'Product',
     description: 'Brand, theme, and copy stay configurable in the consumer project.',
-    image: {
-      sha256: 'bdebe4c2b985444c881e16b890c380d9a4a4b0fc8ccb80814b6d1e45ab36bf91',
-      type: 'image/png',
-      url: 'https://raw.githubusercontent.com/santi020k/og/be0ffd1a4e17abe66ec7f1e28c375665fe3c6376/apps/web/public/icon-512.png'
-    },
+    image: 'public/icon-512.png',
+    imagePresentation: { fit: 'contain', padding: 72 },
     title: 'Ship the card. Delete the renderer.',
     variant: 'product'
   }
 ]
 
 export default definePresetConfig({
-  cards: examples.map(example => ({
+  routeManifest: { file: 'public/og/manifest.json', publicPath: '/og', cacheBust: true },
+  cards: [...Object.values(pages).map(page => site.card(page, {
+    data: definition => ({
+      title: definition.title, description: page.cardDescription, variant: page.variant,
+      accent: '#65f6bd', badge: page.pathname === '/' ? 'Open Graph' : page.title,
+      ...(page.variant === 'product' ? { image: 'public/icon-512.png', imagePresentation: { fit: 'contain', padding: 72 } } : {})
+    })
+  })), ...examples.map(example => ({
     aliases: example.variant === 'product' ? ['default.webp'] : undefined,
     data: example,
     output: `presets/${example.variant}.webp`
-  })),
+  }))],
+  cache: { sources: ['public/icon.svg', 'public/icon-512.png'] },
   clean: true,
   outputDirectory: 'public/og',
   preset: {
-    brand: { domain: 'og.santi020k.com', name: '@santi020k/og' },
+    brand: { domain: 'og.santi020k.com', logo: 'public/icon.svg', name: '@santi020k/og' },
     remoteImages: { cacheDirectory: '.og-remote-cache' },
     theme: { background: '#07110e', foreground: '#eafff6', muted: '#9ab2a8', panel: '#11231d' }
   }
