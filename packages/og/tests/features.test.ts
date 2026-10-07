@@ -13,7 +13,7 @@ import {
   groupArchive,
   paginateArchive } from '../src/content.js'
 import type { PresetCardData } from '../src/presets.js'
-import { createRouteManifest } from '../src/route-manifest.js'
+import { createRouteManifest, getRouteManifestImage } from '../src/route-manifest.js'
 import {
   articleSchema,
   composeJsonLd,
@@ -202,6 +202,15 @@ describe('route manifests and built-site audits', () => {
       '/og/index.png',
       '/og/index.svg'
     ])
+
+    expect(getRouteManifestImage(manifest, '/?preview=1')?.url).toBe('/og/index.png')
+
+    expect(getRouteManifestImage(manifest, '/', { format: 'svg' })?.url).toBe('/og/index.svg')
+
+    expect(() => createRouteManifest([cardWithFormats], {
+      outputDirectory: 'public/og',
+      routeManifest: { cacheBust: true }
+    })).toThrow('Missing content fingerprint for cache-busted OG image: index.png')
 
     const result = await auditSite({
       directory: 'dist',

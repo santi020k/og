@@ -81,6 +81,9 @@ export {
 export { createMigrationReport, type MigrationReport } from './report.js'
 export {
   createRouteManifest,
+  type CreateRouteManifestOptions,
+  getRouteManifestImage,
+  type GetRouteManifestImageOptions,
   type OgRouteManifest,
   type OgRouteManifestImage,
   type OgRouteManifestRoute,
