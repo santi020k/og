@@ -79,6 +79,8 @@ Programmatic consumers can call `inspectHtml()` or `inspectUrl()` from
 `@santi020k/og/inspect`. `inspectUrl()` accepts a custom Fetch implementation, byte and timeout
 limits, and an authorization callback that runs before the initial request and every redirect.
 
+See [preset design and image presentation](docs/preset-design.md) for layout, typography, long-copy behavior, and regeneration guidance.
+
 ## Visual preset gallery
 
 Each preset uses the same generator and accepts the same brand and theme options. These cards are

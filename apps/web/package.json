@@ -3,10 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm run generate:og && astro check && astro build && pnpm run build:functions",
+    "build": "pnpm run generate:brand && pnpm run generate:og && astro check && astro build && pnpm run build:functions",
     "build:functions": "wrangler pages functions build functions --outdir .wrangler/functions --project-directory .",
     "clean": "node scripts/clean.mjs",
     "dev": "pnpm run generate:og && astro dev",
+    "generate:brand": "node scripts/generate-brand.mjs",
     "generate:og": "node ../../packages/og/dist/cli.js generate",
     "lint": "astro check",
     "preview": "astro preview",
@@ -15,14 +16,16 @@
     "validate": "pnpm run clean && pnpm run build"
   },
   "dependencies": {
-    "@astrojs/sitemap": "^3.7.3",
-    "@santi020k/lumen-astro": "^1.4.0",
+    "@astrojs/sitemap": "^3.7.4",
+    "@fontsource-variable/montserrat": "^5.3.0",
+    "@santi020k/lumen-astro": "^4.0.0",
     "@santi020k/og": "workspace:*",
-    "astro": "^7.2.6"
+    "@santi020k/theme": "^2.0.1",
+    "astro": "^7.3.6"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.11"
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.3"
   }
 }

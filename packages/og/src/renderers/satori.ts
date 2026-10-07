@@ -1,7 +1,9 @@
+import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 
 import { Resvg } from '@resvg/resvg-js'
-import satori, { type SatoriOptions } from 'satori'
+import type satori from 'satori'
+import type { SatoriOptions } from 'satori'
 import { html as createHtml } from 'satori-html'
 import sharp from 'sharp'
 
@@ -11,6 +13,27 @@ import type { OgRenderContext, OgRenderer, OgWorkerRenderer } from '../types.js'
 import type { SharpRendererOptions } from './sharp.js'
 
 type SatoriNode = Parameters<typeof satori>[0]
+
+type SatoriCallable = (node: SatoriNode, options: SatoriOptions) => unknown
+
+const isSatoriCallable = (value: unknown): value is SatoriCallable => typeof value === 'function'
+// Satori's public CommonJS entry keeps the bundled WASM loader in a Node context.
+// The 0.36 ESM build references __dirname, which is unavailable in native ESM.
+const satoriModule: unknown = createRequire(import.meta.url)('satori')
+
+const satoriRuntime = typeof satoriModule === 'object' && satoriModule !== null && 'default' in satoriModule ?
+  satoriModule.default :
+  satoriModule
+
+const renderSatori = async (node: SatoriNode, options: SatoriOptions): Promise<string> => {
+  if (!isSatoriCallable(satoriRuntime)) throw new TypeError('Satori did not expose a renderer.')
+
+  const svg: unknown = await satoriRuntime(node, options)
+
+  if (typeof svg !== 'string') throw new TypeError('Satori returned an invalid SVG.')
+
+  return svg
+}
 
 const isHtmlNode = (value: unknown): value is SatoriNode => (
   typeof value === 'object' && value !== null && 'type' in value && 'props' in value
@@ -37,7 +60,7 @@ export interface SatoriRendererOptions<T> {
 
 export const createSatoriRenderer = <T>(options: SatoriRendererOptions<T>): OgRenderer<T> => (
   async (data, context) => {
-    const svg = await satori(await options.template(data, context), {
+    const svg = await renderSatori(await options.template(data, context), {
       ...options.satori,
       height: context.height,
       width: context.width

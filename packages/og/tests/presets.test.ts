@@ -66,6 +66,135 @@ describe('preset renderer', () => {
     })
   })
 
+  it.each(['simple', 'article', 'docs', 'product'] as const)(
+    'scales the complete %s layout to smaller output dimensions deterministically',
+    async variant => {
+      const renderer = createPresetRenderer({ brand: { domain: 'example.com', name: 'Example' } })
+
+      const context = {
+        format: 'png' as const,
+        height: 315,
+        outputPath: '/tmp/compact-preset.png',
+        root: '/tmp',
+        width: 600
+      }
+
+      const data = { description: 'A complete card in a smaller canvas.', title: 'Thoughtful defaults', variant }
+      const first = await renderer(data, context)
+      const second = await renderer(data, context)
+
+      expect(first).toEqual(second)
+
+      await expect(sharp(first as Buffer).metadata()).resolves.toMatchObject({
+        height: 315,
+        width: 600
+      })
+
+      const footer = await sharp(first as Buffer)
+        .extract({ height: 2, left: 40, top: 289, width: 1 })
+        .removeAlpha()
+        .raw()
+        .toBuffer()
+
+      // The accent footer survives at half size rather than falling below the canvas.
+      expect(footer[0]).toBeGreaterThan(100)
+    }
+  )
+
+  it('keeps three title lines and two description lines above the footer', async () => {
+    const renderer = createPresetRenderer()
+
+    const output = await renderer({
+      description: 'Thoughtful previews deserve enough space for the full story, with readable copy and a comfortable rhythm even when the title takes three lines.',
+      title: 'Thoughtful design makes room for people, their ideas, and the stories they want to share with the world.'
+    }, {
+      format: 'svg',
+      height: 630,
+      outputPath: '/tmp/long-copy.svg',
+      root: '/tmp',
+      width: 1200
+    })
+
+    if (typeof output !== 'string') throw new Error('Expected SVG output.')
+
+    const copy = [...output.matchAll(/<text ([^>]+)>[^<]*<\/text>/gu)]
+      .map(match => ({
+        size: Number(/font-size="([\d.]+)"/u.exec(match[1] ?? '')?.[1]),
+        x: Number(/x="([\d.]+)"/u.exec(match[1] ?? '')?.[1]),
+        y: Number(/y="([\d.]+)"/u.exec(match[1] ?? '')?.[1])
+      }))
+      .filter(text => text.x === 72 || text.x === 74)
+
+    expect(copy).toHaveLength(5)
+
+    for (const line of copy) expect(line.y + line.size * 0.25).toBeLessThan(550)
+
+    const lastTitle = copy[2]
+    const description = copy[3]
+
+    if (!lastTitle || !description) throw new Error('Expected both title and description.')
+
+    expect(description.y - description.size).toBeGreaterThan(lastTitle.y + lastTitle.size * 0.2)
+  })
+
+  it('bounds long header and badge copy instead of overflowing its allocated space', async () => {
+    const renderer = createPresetRenderer({
+      brand: {
+        domain: 'a-very-long-domain-name-for-an-example-organization.example.com',
+        name: 'An exceptionally long organization name that needs to stay clear of the domain label'
+      },
+      variant: 'docs'
+    })
+
+    const output = await renderer({
+      badge: 'An exceptionally long category label that should stay within the content column',
+      title: 'Readable at every length'
+    }, {
+      format: 'svg',
+      height: 630,
+      outputPath: '/tmp/long-header.svg',
+      root: '/tmp',
+      width: 1200
+    })
+
+    if (typeof output !== 'string') throw new Error('Expected SVG output.')
+
+    const text = [...output.matchAll(/<text [^>]+>([^<]*)<\/text>/gu)]
+      .map(match => match[1] ?? '')
+
+    expect(text.filter(value => value.endsWith('…'))).toHaveLength(3)
+
+    expect(text).not.toContain('An exceptionally long category label that should stay within the content column'.toUpperCase())
+  })
+
+  it('uses the configured foreground and panel in light-theme decorations', async () => {
+    const renderer = createPresetRenderer({
+      theme: {
+        accent: '#6d28d9',
+        background: '#faf9f6',
+        foreground: '#18181b',
+        muted: '#52525b',
+        panel: '#eceae5'
+      }
+    })
+
+    for (const variant of ['article', 'docs', 'product'] as const) {
+      const output = await renderer({ title: 'A lighter point of view', variant }, {
+        format: 'svg',
+        height: 630,
+        outputPath: '/tmp/light-preset.svg',
+        root: '/tmp',
+        width: 1200
+      })
+
+      expect(output).toContain('fill="#eceae5"')
+
+      expect(output).toContain('stroke="#18181b"')
+
+      expect(output).not.toContain('stroke="white"')
+    }
+  })
+
   it('defines a complete config without a consumer-owned renderer', async () => {
     const root = await createRoot()
 
@@ -102,6 +231,30 @@ describe('preset renderer', () => {
     })
 
     expect(output).toContain('<g data-accent="#ff3366"><text>42</text></g>')
+  })
+
+  it('keeps custom decoration coordinates in the requested output dimensions', async () => {
+    const renderer = createPresetRenderer({
+      decoration: (_data, context) => (
+        `<rect x="${context.width - 50}" y="${context.height - 50}" width="20" height="20" fill="#ef4444"/>`
+      )
+    })
+
+    const output = await renderer({ title: 'Custom visual coordinates' }, {
+      format: 'png',
+      height: 315,
+      outputPath: '/tmp/custom-size.png',
+      root: '/tmp',
+      width: 600
+    })
+
+    const pixel = await sharp(output as Buffer)
+      .extract({ height: 1, left: 560, top: 275, width: 1 })
+      .removeAlpha()
+      .raw()
+      .toBuffer()
+
+    expect([...pixel]).toEqual([239, 68, 68])
   })
 
   it('presents logos without requiring consumer-side raster preprocessing', async () => {
@@ -151,6 +304,33 @@ describe('preset renderer', () => {
 
     const pixel = await sharp(output as Buffer)
       .extract({ height: 1, left: 952, top: 331, width: 1 })
+      .removeAlpha()
+      .raw()
+      .toBuffer()
+
+    expect([...pixel]).toEqual([239, 68, 68])
+  })
+
+  it('normalizes WebP brand marks before embedding them in the header', async () => {
+    const root = await createRoot()
+    const logoPath = path.join(root, 'brand.webp')
+
+    await sharp({
+      create: { background: '#ef4444', channels: 4, height: 32, width: 32 }
+    }).webp({ lossless: true }).toFile(logoPath)
+
+    const renderer = createPresetRenderer({ brand: { logo: logoPath, name: 'Example' } })
+
+    const output = await renderer({ title: 'Visible brand mark' }, {
+      format: 'png',
+      height: 630,
+      outputPath: path.join(root, 'brand.png'),
+      root,
+      width: 1200
+    })
+
+    const pixel = await sharp(output as Buffer)
+      .extract({ height: 1, left: 88, top: 86, width: 1 })
       .removeAlpha()
       .raw()
       .toBuffer()
@@ -309,6 +489,26 @@ describe('preset renderer', () => {
     expect(output).toContain('Inter Variable')
 
     expect(output).not.toContain('rgba(')
+  })
+
+  it('keeps long titles out of the visual column', async () => {
+    const renderer = createPresetRenderer({ variant: 'docs' })
+
+    const output = await renderer({
+      title: 'Write it once. Ship it in any framework.'
+    }, {
+      format: 'svg',
+      height: 630,
+      outputPath: '/tmp/long-title.svg',
+      root: '/tmp',
+      width: 1200
+    })
+
+    expect(output).toContain('>Write it once. Ship it</text>')
+
+    expect(output).toContain('>in any framework.</text>')
+
+    expect(output).not.toContain('>Write it once. Ship it in</text>')
   })
 
   it('keeps joined emoji graphemes intact while splitting long tokens', () => {

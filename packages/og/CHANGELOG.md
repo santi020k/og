@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Refine all four neutral preset compositions with quieter details, bounded header labels,
+  footer-safe long copy, complete layout scaling, and raster header-logo normalization.
+- Refresh compatible dependencies and security patches; retain tested TypeScript and Satori
+  versions where newer releases fail the supported toolchain or Node.js renderer.
+- Align the documentation site with shared Santi020k Theme tokens and Lumen 4, including light
+  and dark modes, responsive navigation, optional reveals, and Astro page transitions.
+
+Preset appearance changes deliberately regenerate cached cards (preset version 6). Existing
+configuration and renderer contracts remain compatible. Inspect regenerated tracked assets before
+publishing; custom renderers remain available for projects requiring an exact composition.
+
 ## 1.1.1 - 2026-08-25
 
 - Normalize WebP, AVIF, and GIF card images to deterministic embedded PNG data so Sharp's SVG
