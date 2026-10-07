@@ -32,3 +32,9 @@ manifest URLs so regenerated cards get new public URLs. Gallery examples remain 
 Every website build runs `audit:site` against final HTML, sitemap, robots, unique images, and the
 manifest before compiling the Cloudflare function. Public build variables participate in Turbo
 cache keys. Recheck rendered docs anchors, reduced motion, and back-to-top after navigation edits.
+
+Cloudflare Pages serves directory routes with a trailing slash. Keep Astro's trailing-slash policy,
+shared page definitions, and internal links aligned. The website audit additionally requires an
+exact canonical match to each built HTML route; normalized route coverage alone misses this issue.
+The release job pins npm 12.2.0 (compatible with its Node.js 22 runtime) so pnpm 10's publishing
+client can use an existing npm trusted publisher, with the current token as fallback.

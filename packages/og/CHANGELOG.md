@@ -4,6 +4,10 @@
 
 ## 1.2.0 - 2026-10-07
 
+- Align deployed website canonicals, navigation, and sitemap routes with Cloudflare directory URLs,
+  and reject mismatches during the website build.
+- Use a compatible npm publishing client with trusted-publisher support in the release workflow.
+
 - Contain decoded social-image audit paths within the build and detect multi-hop redirect loops.
 - Give website routes distinct fingerprinted social cards and contextual JSON-LD; enforce built
   sitemap, robots, manifest, and image audits. Add current-section docs navigation and back-to-top.

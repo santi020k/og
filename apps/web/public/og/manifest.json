@@ -22,7 +22,7 @@
       ],
       "title": "Open Graph image generation"
     },
-    "/docs": {
+    "/docs/": {
       "alt": "@santi020k/og documentation: from content to social cards",
       "description": "Learn visual presets, portable metadata, content discovery, runtime responses, JSON-LD, and built-site audits with @santi020k/og.",
       "images": [
@@ -36,14 +36,14 @@
           "width": 1200
         }
       ],
-      "pathname": "/docs",
+      "pathname": "/docs/",
       "schemaTypes": [
         "WebPage",
         "BreadcrumbList"
       ],
       "title": "Documentation"
     },
-    "/checker": {
+    "/checker/": {
       "alt": "Inspect social previews and website metadata with the OG checker",
       "description": "Inspect Open Graph images, social metadata, canonical URLs, robots directives, and structured data for public or localhost websites.",
       "images": [
@@ -57,7 +57,7 @@
           "width": 1200
         }
       ],
-      "pathname": "/checker",
+      "pathname": "/checker/",
       "schemaTypes": [
         "WebPage",
         "WebApplication"

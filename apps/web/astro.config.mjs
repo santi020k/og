@@ -40,7 +40,7 @@ export default defineConfig({
     port: 4321
   },
   site,
-  trailingSlash: 'never',
+  trailingSlash: 'always',
   vite: {
     plugins: [checkerApiDev()],
     server: {

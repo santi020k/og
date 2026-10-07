@@ -10,7 +10,7 @@ interface Props {
 }
 
 const { description, title } = Astro.props
-const pathname = Astro.url.pathname.replace(/\/$/u, '') || '/'
+const pathname = Astro.url.pathname
 const definition = Object.values(pages).find(page => page.pathname === pathname)
 if (!definition) throw new Error(`Missing page metadata for ${pathname}`)
 const route = Object.values(manifest.routes).find(route => route.pathname === pathname)
@@ -21,9 +21,9 @@ const canonical = new URL(page.pathname, site.options.siteUrl)
 const author = defineSchema({ '@type': 'Person', '@id': 'https://santi020k.com/#person', name: 'Santiago Molina', url: 'https://santi020k.com' })
 const website = defineSchema({ '@type': 'WebSite', '@id': new URL('/#website', site.options.siteUrl).href, name: '@santi020k/og', url: site.options.siteUrl.toString(), inLanguage: 'en', author })
 const webPage = defineSchema({ '@type': 'WebPage', '@id': `${canonical.href}#page`, name: title, description, url: canonical.href, isPartOf: { '@type': 'WebSite', '@id': website['@id'] }, author })
-const context = pathname === '/checker'
+const context = pathname === '/checker/'
   ? defineSchema({ '@type': 'WebApplication', name: title, description, url: canonical.href, applicationCategory: 'DeveloperApplication', operatingSystem: 'Any', author })
-  : pathname === '/docs'
+  : pathname === '/docs/'
     ? defineSchema({ '@type': 'BreadcrumbList', itemListElement: [
         defineSchema({ '@type': 'ListItem', position: 1, name: 'Home', item: new URL('/', site.options.siteUrl).href }),
         defineSchema({ '@type': 'ListItem', position: 2, name: 'Documentation', item: canonical.href })
