@@ -40,6 +40,11 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
+      - name: Set up npm publishing client
+        run: |
+          npm install --global npm@12.2.0
+          npm --version
+
       - name: Verify release version
         env:
           RELEASE_VERSION: ${{ inputs.version }}

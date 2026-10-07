@@ -22,7 +22,7 @@ export const pages = {
     variant: 'product'
   }),
   docs: site.page({
-    pathname: '/docs',
+    pathname: '/docs/',
     title: 'Documentation',
     cardDescription: 'Create social cards, share metadata, and audit every route from one config.',
     description: 'Learn visual presets, portable metadata, content discovery, runtime responses, JSON-LD, and built-site audits with @santi020k/og.',
@@ -31,7 +31,7 @@ export const pages = {
     variant: 'docs'
   }),
   checker: site.page({
-    pathname: '/checker',
+    pathname: '/checker/',
     title: 'OG & metadata checker',
     cardDescription: 'Check social previews, canonical URLs, and structured data before you ship.',
     description: 'Inspect Open Graph images, social metadata, canonical URLs, robots directives, and structured data for public or localhost websites.',
