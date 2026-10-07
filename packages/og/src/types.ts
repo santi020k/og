@@ -22,6 +22,8 @@ export interface OgRouteDescriptor {
 }
 
 export interface OgRouteManifestOptions {
+  /** Append a deterministic content version to public image URLs for social-cache invalidation. */
+  cacheBust?: boolean
   /** Manifest file relative to root. Defaults beside the default output directory. */
   file?: string
   /** Public URL prefix for the default output directory. */

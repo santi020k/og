@@ -1,4 +1,10 @@
-# @santi020k/og
+<p align="center">
+  <img src="apps/web/public/icon.svg" alt="@santi020k/og" width="88">
+</p>
+
+<h1 align="center">@santi020k/og</h1>
+
+<p align="center">Deterministic social images, shaped by your content and brand.</p>
 
 Deterministic Open Graph image generation with useful visual presets and a fully custom renderer
 escape hatch.
@@ -12,10 +18,12 @@ escape hatch.
 [Issues](https://github.com/santi020k/og/issues) ·
 [Contributing](CONTRIBUTING.md)
 
-[![CI](https://github.com/santi020k/og/actions/workflows/ci.yml/badge.svg)](https://github.com/santi020k/og/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/@santi020k/og.svg)](https://www.npmjs.com/package/@santi020k/og)
-[![npm downloads](https://img.shields.io/npm/dm/@santi020k/og.svg)](https://www.npmjs.com/package/@santi020k/og)
-[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+<p align="center">
+  <a href="https://github.com/santi020k/og/actions/workflows/ci.yml"><img src="https://github.com/santi020k/og/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.npmjs.com/package/@santi020k/og"><img src="https://img.shields.io/npm/v/@santi020k/og.svg" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/@santi020k/og"><img src="https://img.shields.io/npm/dm/@santi020k/og.svg" alt="npm downloads"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="license"></a>
+</p>
 
 Use `@santi020k/og` with Astro, Next.js, plain Node.js, monorepos, Markdown collections, CMS data,
 or a static array. Start with the `simple`, `article`, `docs`, or `product` preset and add your
@@ -24,6 +32,10 @@ concurrency, safe cleanup, encoding, and CI verification. A custom Sharp or Sato
 available when a project needs a unique composition. Framework-neutral metadata helpers reuse the
 same page definition for canonical, Open Graph, X, robots, plain HTML, and Next.js metadata.
 The website checker and `santi-og inspect` analyze the result for deployed and localhost projects.
+Repositories using [`quality`](https://quality.santi020k.com/adapters/) receive native workspace
+detection and normalized stale-output diagnostics from `santi-og check --json`.
+
+**Explore:** [Quick start](#quick-start) · [Visual examples](#visual-examples) · [Workspace](#workspace) · [Development](#development) · [Deployment and release](#deployment-and-release)
 
 ## Quick start
 
@@ -80,11 +92,25 @@ environment, the `CLOUDFLARE_API_TOKEN` and
 - `CLOUDFLARE_PAGES_PROJECT_NAME=santi020k-og`
 - `PUBLIC_SITE_URL=https://og.santi020k.com`
 
+The scheduled **Production metadata score** workflow runs the v1 inspector against every configured
+consumer homepage and fails unless each site scores exactly 100. Static consumer builds also run
+`santi-og audit` against their final HTML, images, route manifest, sitemap, robots policy, and
+redirects before deployment.
+
 Package releases are deliberate. Run the **Release** GitHub workflow with a version matching
 `packages/og/package.json`. The `release` environment must provide `NPM_TOKEN`; the workflow
 validates the repository, publishes with npm provenance, verifies the registry result, and then
 rebuilds registry-installed consumers before creating the matching Git tag and GitHub release. See
 the [release acceptance checklist](packages/og/docs/release-acceptance.md) for the complete gate.
+
+## Find your next step
+
+| Resource | Use it for |
+| --- | --- |
+| [`@santi020k/og`](packages/og/README.md) | Focused installation and usage reference. |
+| [Stability contract](packages/og/STABILITY.md) | Compatibility and release expectations. |
+| [Contributing](CONTRIBUTING.md) | Contributor setup and validation workflow. |
+| [Security policy](SECURITY.md) | Private vulnerability reporting and support boundaries. |
 
 ## License
 

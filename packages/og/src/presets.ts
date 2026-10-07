@@ -89,11 +89,11 @@ export interface PresetConfig<T extends PresetCardData = PresetCardData>
 }
 
 const DEFAULT_THEME: PresetTheme = {
-  accent: '#7c3aed',
-  background: '#0f172a',
-  foreground: '#f8fafc',
-  muted: '#cbd5e1',
-  panel: '#1e293b'
+  accent: '#b7a0f8',
+  background: '#161719',
+  foreground: '#f5f3ed',
+  muted: '#a9abae',
+  panel: '#232529'
 }
 
 const MIME_TYPES: Readonly<Record<string, string>> = {
@@ -196,7 +196,7 @@ const textLines = (parameters: {
   y: number
 }): string => parameters.lines.map((line, index) => (
   `<text x="${parameters.x}" y="${parameters.y + index * parameters.lineHeight}" ` +
-  `fill="${parameters.color}" font-family="${escapeXml(parameters.fontFamily)}" ` +
+  `fill="${escapeXml(parameters.color)}" font-family="${escapeXml(parameters.fontFamily)}" ` +
   `font-size="${parameters.fontSize}" font-weight="${parameters.fontWeight}">` +
   `${escapeXml(line)}</text>`
 )).join('')
@@ -208,48 +208,56 @@ const variantLabel = (variant: PresetVariant): string => ({
   simple: 'OPEN GRAPH'
 })[variant]
 
-const variantDecoration = (variant: PresetVariant, accent: string): string => {
+const variantDecoration = (
+  variant: PresetVariant,
+  accent: string,
+  theme: PresetTheme
+): string => {
+  const foreground = escapeXml(theme.foreground)
+  const panel = escapeXml(theme.panel)
+  const color = escapeXml(accent)
+
   if (variant === 'article') {
     return `
-      <g transform="translate(790 178)">
-        <rect width="326" height="310" rx="34" fill="#ffffff0d" stroke="#ffffff21"/>
-        <rect x="38" y="48" width="250" height="18" rx="9" fill="${accent}" opacity="0.8"/>
-        <rect x="38" y="94" width="218" height="12" rx="6" fill="#ffffff6b"/>
-        <rect x="38" y="126" width="246" height="12" rx="6" fill="#ffffff4d"/>
-        <rect x="38" y="158" width="186" height="12" rx="6" fill="#ffffff4d"/>
-        <circle cx="62" cy="244" r="24" fill="${accent}" opacity="0.72"/>
-        <rect x="102" y="228" width="154" height="12" rx="6" fill="#ffffff6b"/>
-        <rect x="102" y="252" width="104" height="9" rx="4.5" fill="#ffffff3d"/>
+      <g transform="translate(814 174)">
+        <rect x="10" y="14" width="276" height="316" rx="18" fill="${color}" opacity="0.14" transform="rotate(7 148 172)"/>
+        <rect width="276" height="316" rx="18" fill="${panel}" stroke="${foreground}" stroke-opacity="0.18"/>
+        <path d="M30 38h216" stroke="${color}" stroke-width="3"/>
+        <rect x="30" y="64" width="164" height="14" rx="3" fill="${foreground}" opacity="0.88"/>
+        <rect x="30" y="88" width="210" height="14" rx="3" fill="${foreground}" opacity="0.88"/>
+        <rect x="30" y="126" width="216" height="94" rx="8" fill="url(#sculpture)"/>
+        <path d="M30 248h96m-96 16h96m-96 16h74M150 248h96m-96 16h96m-96 16h72" stroke="${foreground}" stroke-opacity="0.32" stroke-width="5"/>
       </g>`
   }
 
   if (variant === 'docs') {
     return `
-      <g transform="translate(818 170)" fill="none" stroke-linecap="round">
-        <rect width="286" height="326" rx="32" fill="#ffffff0d" stroke="#ffffff21"/>
-        <path d="M50 78h186M50 126h142M50 174h186M50 222h116" stroke="#ffffff61" stroke-width="14"/>
-        <path d="M50 270h92" stroke="${accent}" stroke-width="14"/>
+      <g transform="translate(798 174)">
+        <path d="M36 4h108l20 24h128v284H36z" fill="${color}" opacity="0.18"/>
+        <rect x="16" y="44" width="286" height="272" rx="18" fill="${panel}" stroke="${foreground}" stroke-opacity="0.14"/>
+        <rect y="62" width="286" height="272" rx="18" fill="${panel}" stroke="${foreground}" stroke-opacity="0.22"/>
+        <path d="M32 104h222" stroke="${foreground}" stroke-opacity="0.12"/>
+        <circle cx="36" cy="84" r="4" fill="${color}"/>
+        <circle cx="52" cy="84" r="4" fill="${foreground}" opacity="0.24"/>
+        <circle cx="68" cy="84" r="4" fill="${foreground}" opacity="0.24"/>
+        <path d="m74 146-28 28 28 28m138-56 28 28-28 28m-52-68-20 82" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M34 250h170m-170 22h218m-218 22h128" stroke="${foreground}" stroke-opacity="0.32" stroke-width="6"/>
       </g>`
   }
 
   if (variant === 'product') {
     return `
-      <g transform="translate(796 164)">
-        <rect width="320" height="340" rx="44" fill="${accent}" opacity="0.16"/>
-        <rect x="34" y="32" width="252" height="276" rx="30" fill="#0f172abd" stroke="#ffffff29"/>
-        <circle cx="160" cy="132" r="62" fill="${accent}" opacity="0.88"/>
-        <path d="M132 132h56M160 104v56" stroke="white" stroke-width="12" stroke-linecap="round"/>
-        <rect x="78" y="230" width="164" height="16" rx="8" fill="#ffffff6b"/>
-        <rect x="108" y="262" width="104" height="11" rx="5.5" fill="#ffffff3d"/>
+      <g transform="translate(786 156)">
+        <rect width="334" height="352" rx="36" fill="${panel}" stroke="${foreground}" stroke-opacity="0.12"/>
+        <circle cx="167" cy="170" r="111" fill="${color}" opacity="0.1"/>
+        <circle cx="167" cy="170" r="83" fill="url(#sculpture)"/>
+        <ellipse cx="167" cy="170" rx="126" ry="42" transform="rotate(-34 167 170)" fill="none" stroke="${foreground}" stroke-opacity="0.58" stroke-width="2"/>
+        <circle cx="269" cy="100" r="8" fill="${color}"/>
+        <path d="M139 307h56" stroke="${foreground}" stroke-opacity="0.25" stroke-width="5" stroke-linecap="round"/>
       </g>`
   }
 
-  return `
-    <g transform="translate(846 194)">
-      <circle cx="120" cy="120" r="118" fill="${accent}" opacity="0.16"/>
-      <circle cx="120" cy="120" r="74" fill="none" stroke="${accent}" stroke-width="3" opacity="0.76"/>
-      <circle cx="120" cy="120" r="24" fill="${accent}"/>
-    </g>`
+  return ''
 }
 
 const renderPresetSvg = async <T extends PresetCardData>(
@@ -263,7 +271,7 @@ const renderPresetSvg = async <T extends PresetCardData>(
   const brand = { name: 'Open Graph', ...options.brand, ...data.brand }
   const domain = data.domain ?? brand.domain
   const image = await resolveImage(data.image, context, options.remoteImages, true)
-  const logo = await resolveImage(brand.logo, context, options.remoteImages)
+  const logo = await resolveImage(brand.logo, context, options.remoteImages, true)
 
   const imagePresentation = {
     background: theme.panel,
@@ -280,7 +288,7 @@ const renderPresetSvg = async <T extends PresetCardData>(
 
   const hasVisual = Boolean(image) || variant !== 'simple'
   const font = await loadPresetFont(options.typography, context.root)
-  const maximumTitleWidth = hasVisual ? 650 : Math.min(990, context.width - 144)
+  const maximumTitleWidth = hasVisual ? 590 : 990
   const titleSizes = hasVisual ? [60, 54, 48] : [76, 66, 56]
 
   const titleLayout = titleSizes
@@ -318,9 +326,34 @@ const renderPresetSvg = async <T extends PresetCardData>(
     }) :
     []
 
-  const badge = data.badge ?? data.eyebrow ?? variantLabel(variant)
-  const contentWidth = hasVisual ? 650 : 990
-  const descriptionY = 354 + (titleLines.length - 1) * (titleSize * 1.06) + 46
+  const badge = wrapMeasuredText({
+    font,
+    fontSize: 13,
+    maximumLines: 1,
+    maximumWidth: maximumTitleWidth * 0.76,
+    value: (data.badge ?? data.eyebrow ?? variantLabel(variant)).toUpperCase()
+  })[0] ?? ''
+
+  const brandName = wrapMeasuredText({
+    font,
+    fontSize: 22,
+    maximumLines: 1,
+    maximumWidth: domain ? 600 : 990,
+    value: brand.name
+  })[0] ?? ''
+
+  const domainLabel = domain ?
+    wrapMeasuredText({
+      font,
+      fontSize: 16,
+      maximumLines: 1,
+      maximumWidth: 300,
+      value: domain
+    })[0] :
+    undefined
+
+  const titleY = 278
+  const descriptionY = titleY + (titleLines.length - 1) * (titleSize * 1.06) + titleSize * 0.5 + 26
   const imageX = 778 + imagePresentation.padding
   const imageY = 156 + imagePresentation.padding
   const imageWidth = 350 - imagePresentation.padding * 2
@@ -328,41 +361,46 @@ const renderPresetSvg = async <T extends PresetCardData>(
   const imageFit = imagePresentation.fit === 'contain' ? 'meet' : 'slice'
 
   const visual = image ?
-    `<g clip-path="url(#visual)"><rect x="778" y="156" width="350" height="352" rx="40" fill="${escapeXml(imagePresentation.background)}"/><image href="${escapeXml(image)}" x="${imageX}" y="${imageY}" width="${imageWidth}" height="${imageHeight}" preserveAspectRatio="xMidYMid ${imageFit}"/></g><rect x="778" y="156" width="350" height="352" rx="40" fill="none" stroke="white" stroke-opacity="0.16"/>` :
+    `<g clip-path="url(#visual)"><rect x="778" y="156" width="350" height="352" rx="40" fill="${escapeXml(imagePresentation.background)}"/><image href="${escapeXml(image)}" x="${imageX}" y="${imageY}" width="${imageWidth}" height="${imageHeight}" preserveAspectRatio="xMidYMid ${imageFit}"/></g><rect x="778" y="156" width="350" height="352" rx="40" fill="none" stroke="${escapeXml(theme.foreground)}" stroke-opacity="0.16"/>` :
     ''
 
   const customDecoration = await options.decoration?.(data, context, { accent, theme })
-  const decoration = customDecoration ?? (image || !hasVisual ? visual : variantDecoration(variant, accent))
+  const defaultDecoration = image || !hasVisual ? visual : variantDecoration(variant, accent, theme)
+  const decoration = customDecoration === undefined ? defaultDecoration : ''
 
   return `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${context.width} ${context.height}" role="img" aria-label="${escapeXml(data.title)}">
   <defs>
     <style>${font.css}</style>
-    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(${context.width * 0.88} ${context.height * 0.14}) rotate(135) scale(${context.width * 0.66})">
-      <stop stop-color="${accent}" stop-opacity="0.42"/>
-      <stop offset="1" stop-color="${theme.background}" stop-opacity="0"/>
+    <radialGradient id="glow" cx="90%" cy="30%" r="70%">
+      <stop stop-color="${escapeXml(accent)}" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="${escapeXml(theme.background)}" stop-opacity="0"/>
     </radialGradient>
-    <pattern id="grid" width="52" height="52" patternUnits="userSpaceOnUse">
-      <path d="M52 0H0v52" fill="none" stroke="white" stroke-opacity="0.045"/>
-    </pattern>
+    <radialGradient id="sculpture" cx="28%" cy="20%" r="80%">
+      <stop stop-color="${escapeXml(theme.foreground)}" stop-opacity="0.86"/>
+      <stop offset="0.36" stop-color="${escapeXml(accent)}"/>
+      <stop offset="1" stop-color="${escapeXml(theme.panel)}"/>
+    </radialGradient>
     <clipPath id="visual"><rect x="778" y="156" width="350" height="352" rx="40"/></clipPath>
   </defs>
-  <rect width="100%" height="100%" fill="${theme.background}"/>
-  <rect width="100%" height="100%" fill="url(#glow)"/>
-  <rect width="100%" height="100%" fill="url(#grid)"/>
-  <rect x="28" y="28" width="${context.width - 56}" height="${context.height - 56}" rx="38" fill="none" stroke="white" stroke-opacity="0.08"/>
-  ${logo ? `<image href="${escapeXml(logo)}" x="72" y="62" width="64" height="64" preserveAspectRatio="xMidYMid meet"/>` : `<rect x="72" y="62" width="64" height="64" rx="18" fill="${accent}"/><circle cx="104" cy="94" r="12" fill="white" opacity="0.92"/>`}
-  <text x="154" y="91" fill="${theme.foreground}" font-family="${escapeXml(font.family)}" font-size="26" font-weight="800">${escapeXml(brand.name)}</text>
-  ${domain ? `<text x="154" y="118" fill="${theme.muted}" font-family="${escapeXml(font.family)}" font-size="15" font-weight="600">${escapeXml(domain)}</text>` : ''}
-  <g transform="translate(72 166)">
-    <rect width="${Math.min(360, badge.length * 10 + 54)}" height="38" rx="19" fill="${theme.panel}" stroke="${accent}" stroke-opacity="0.62"/>
-    <circle cx="20" cy="19" r="5" fill="${accent}"/>
-    <text x="36" y="25" fill="${theme.foreground}" font-family="${escapeXml(font.family)}" font-size="13" font-weight="800" letter-spacing="1.5">${escapeXml(badge.toUpperCase())}</text>
+  <g transform="scale(${context.width / 1200} ${context.height / 630})">
+    <rect width="1200" height="630" fill="${escapeXml(theme.background)}"/>
+    <rect width="1200" height="630" fill="url(#glow)"/>
+    ${!hasVisual ? `<g fill="none" stroke="${escapeXml(accent)}" stroke-opacity="0.11"><circle cx="1118" cy="602" r="228" stroke-width="68"/><circle cx="1118" cy="602" r="142" stroke-width="2"/></g>` : ''}
+    ${logo ? `<image href="${escapeXml(logo)}" x="72" y="70" width="32" height="32" preserveAspectRatio="xMidYMid meet"/>` : `<rect x="72" y="70" width="32" height="32" rx="10" fill="${escapeXml(accent)}"/><path d="M81 91V81h10m-6 10h10V81" fill="none" stroke="${escapeXml(theme.background)}" stroke-width="2.5" stroke-linejoin="round"/>`}
+    <text x="118" y="94" fill="${escapeXml(theme.foreground)}" font-family="${escapeXml(font.family)}" font-size="22" font-weight="600">${escapeXml(brandName)}</text>
+    ${domainLabel ? `<text x="1128" y="92" text-anchor="end" fill="${escapeXml(theme.muted)}" font-family="${escapeXml(font.family)}" font-size="16" font-weight="500">${escapeXml(domainLabel)}</text>` : ''}
+    <path d="M72 132h1056" stroke="${escapeXml(theme.foreground)}" stroke-opacity="0.12"/>
+    <circle cx="77" cy="183" r="4" fill="${escapeXml(accent)}"/>
+    <text x="94" y="188" fill="${escapeXml(theme.muted)}" font-family="${escapeXml(font.family)}" font-size="13" font-weight="600" letter-spacing="1.5">${escapeXml(badge)}</text>
+    ${textLines({ color: theme.foreground, fontFamily: font.family, fontSize: titleSize, fontWeight: 800, lineHeight: titleSize * 1.06, lines: titleLines, x: 72, y: titleY })}
+    ${descriptionLines.length > 0 ? textLines({ color: theme.muted, fontFamily: font.family, fontSize: 23, fontWeight: 500, lineHeight: 34, lines: descriptionLines, x: 74, y: descriptionY }) : ''}
+    <path d="M72 550h1056" stroke="${escapeXml(theme.foreground)}" stroke-opacity="0.12"/>
+    <rect x="72" y="578" width="32" height="3" rx="1.5" fill="${escapeXml(accent)}"/>
+    <text x="1128" y="585" text-anchor="end" fill="${escapeXml(theme.muted)}" font-family="${escapeXml(font.family)}" font-size="12" font-weight="500" letter-spacing="1.5">${variantLabel(variant)}</text>
+    ${decoration}
   </g>
-  ${textLines({ color: theme.foreground, fontFamily: font.family, fontSize: titleSize, fontWeight: 800, lineHeight: titleSize * 1.06, lines: titleLines, x: 72, y: 294 })}
-  ${descriptionLines.length > 0 ? textLines({ color: theme.muted, fontFamily: font.family, fontSize: 23, fontWeight: 500, lineHeight: 34, lines: descriptionLines, x: 74, y: descriptionY }) : ''}
-  <rect x="72" y="578" width="${Math.min(contentWidth, 190)}" height="5" rx="2.5" fill="${accent}"/>
-  ${decoration}
+  ${customDecoration ?? ''}
 </svg>`.replaceAll(/[ \t]+$/gmu, '').trim()
 }
 

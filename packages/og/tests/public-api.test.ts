@@ -55,6 +55,7 @@ const rootRuntimeExports = [
   'defineWorkerRenderer',
   'fromLegacyCards',
   'generate',
+  'getRouteManifestImage',
   'inspectHtml',
   'inspectUrl',
   'materializeRemoteImage',

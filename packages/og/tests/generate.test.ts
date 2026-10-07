@@ -99,6 +99,52 @@ describe('generate', () => {
     expect((await generate(config, { check: true })).stale).toContain('public/og/manifest.json')
   })
 
+  it('versions public route images from the complete generation fingerprint', async () => {
+    const root = await createRoot()
+    const source = path.join(root, 'brand.txt')
+
+    const config: OgConfig<CardData> = {
+      cache: { sources: ['brand.txt'] },
+      cards: createPathCards([{ data: { title: 'Home' }, pathname: '/' }]),
+      renderer: data => `<svg>${data.title}</svg>`,
+      root,
+      routeManifest: { cacheBust: true }
+    }
+
+    await writeFile(source, 'first brand revision')
+
+    await generate(config)
+
+    const manifestPath = path.join(root, 'public/og/manifest.json')
+
+    const first = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+      routes: Record<string, { images: { url?: string, version?: string }[] }>
+    }
+
+    const firstImage = first.routes['/']?.images[0]
+
+    expect(firstImage?.version).toMatch(/^[a-f\d]{12}$/u)
+
+    if (!firstImage?.version) throw new Error('Expected a versioned primary route image.')
+
+    expect(firstImage.url).toBe(`/og/index.webp?v=${firstImage.version}`)
+
+    await writeFile(source, 'second brand revision')
+
+    await generate(config)
+
+    const second = JSON.parse(await readFile(manifestPath, 'utf8')) as typeof first
+    const secondImage = second.routes['/']?.images[0]
+
+    expect(secondImage?.version).not.toBe(firstImage.version)
+
+    if (!secondImage?.version) throw new Error('Expected the changed route image to remain versioned.')
+
+    expect(secondImage.url).toBe(`/og/index.webp?v=${secondImage.version}`)
+
+    expect((await generate(config, { check: true })).stale).toEqual([])
+  })
+
   it('maps typed catalogs and renders multiple formats with format-aware aliases', async () => {
     const root = await createRoot()
 

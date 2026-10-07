@@ -1,5 +1,5 @@
 ---
-import { Badge, Card } from '@santi020k/lumen-astro'
+import { Badge, Icon } from '@santi020k/lumen-astro'
 
 const presets = [
   {
@@ -31,8 +31,8 @@ const presets = [
 
 <div class="preset-gallery">
   {presets.map(preset => (
-    <Card as="article" className="preset-example" variant="muted">
-      <div class="preset-example__image">
+    <article class="preset-example">
+      <a class="preset-example__image" href={preset.image} aria-label={`View full-size ${preset.label.toLowerCase()} preset`}>
         <img
           src={preset.image}
           width="1200"
@@ -40,7 +40,8 @@ const presets = [
           loading="lazy"
           alt={`${preset.label} Open Graph preset example`}
         />
-      </div>
+        <span class="preset-example__open"><Icon name="arrow-up-right" /> Full size</span>
+      </a>
       <div class="preset-example__body">
         <div>
           <h3>{preset.label}</h3>
@@ -48,6 +49,6 @@ const presets = [
         </div>
         <Badge variant="outline">variant: '{preset.variant}'</Badge>
       </div>
-    </Card>
+    </article>
   ))}
 </div>

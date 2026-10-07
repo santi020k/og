@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <style>
-    .background { fill: #65f6bd }
-    .mark { fill: #07110e }
+    .background { fill: #752df0 }
+    .mark { fill: #ffffff }
     @media (prefers-color-scheme: light) {
-      .background { fill: #07110e }
-      .mark { fill: #65f6bd }
+      .background { fill: #ffffff }
+      .mark { fill: #752df0 }
     }
   </style>
   <rect class="background" width="64" height="64" rx="17"/>

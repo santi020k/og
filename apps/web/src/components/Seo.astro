@@ -47,8 +47,9 @@ const structuredData = defineSchema({
 <MetadataHead {page} {site} />
 <meta name="author" content="Santiago Molina" />
 <meta name="generator" content={Astro.generator} />
-<meta name="theme-color" content="#07110e" />
-<meta name="color-scheme" content="dark" />
+<meta name="theme-color" content="#110c1d" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#f8f6fd" media="(prefers-color-scheme: light)" />
+<meta name="color-scheme" content="light dark" />
 
 <link rel="sitemap" href="/sitemap-index.xml" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />

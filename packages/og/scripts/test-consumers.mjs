@@ -79,6 +79,7 @@ import { access } from 'node:fs/promises'
 import { generate } from '@santi020k/og'
 import { createMetaTags, definePageMetadata } from '@santi020k/og/metadata'
 import { definePresetConfig } from '@santi020k/og/presets'
+import { createSatoriRenderer, html } from '@santi020k/og/satori'
 
 const page = definePageMetadata({
   description: 'Registry-installed plain Node consumer.',
@@ -96,6 +97,16 @@ await generate(definePresetConfig({
 }))
 
 await access('public/og/index.webp')
+
+const satoriRenderer = createSatoriRenderer({
+  satori: { fonts: [] },
+  template: () => html('<div style="display:flex;width:100%;height:100%;background:#18181b"></div>')
+})
+const rendered = await satoriRenderer({}, {
+  format: 'svg', height: 630, outputPath: 'consumer.svg', root: process.cwd(), width: 1200
+})
+assert.match(String(rendered), /<svg/u)
+assert.match(String(rendered), /width="1200"/u)
 `
   })
 

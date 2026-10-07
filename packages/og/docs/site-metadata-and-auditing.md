@@ -111,6 +111,7 @@ alias:
 ```ts
 export default definePresetConfig({
   routeManifest: {
+    cacheBust: true,
     file: 'public/og/manifest.json',
     publicPath: '/og',
     publicPaths: { admin: '/admin/og' },
@@ -123,7 +124,22 @@ export default definePresetConfig({
 `createPathCards` and `createPageCard` attach route information automatically. Typed catalogs can
 provide it with the `route` callback in `createCards`. The manifest has no timestamp, participates
 in `santi-og check`, and includes dimensions, formats, aliases, named output directories, and
-public URLs.
+public URLs. With `cacheBust: true`, each public URL receives a short `?v=` value derived from the
+same complete fingerprint used by generation. Changes to card data, dimensions, config, renderer,
+declared sources, or the generator version therefore give social crawlers a new URL instead of a
+stale cached image.
+
+Use the manifest URL in the page metadata; versioning the manifest alone cannot change a hardcoded
+`og:image` URL. `getRouteManifestImage()` selects the primary generated image for a route:
+
+```ts
+import manifest from './public/og/manifest.json' with { type: 'json' }
+import { getRouteManifestImage } from '@santi020k/og'
+
+const image = getRouteManifestImage(manifest, '/docs')
+
+// Resolve image?.url against the site URL before passing it to a metadata adapter.
+```
 
 ## Extensible JSON-LD recipes
 
