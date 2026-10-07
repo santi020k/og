@@ -263,19 +263,17 @@ footer { border-top: 1px solid var(--og-line); }
   .mobile-nav summary { display: flex; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; cursor: pointer; list-style: none; }
   .mobile-nav summary::-webkit-details-marker { display: none; }
   .mobile-nav summary > span:not([aria-hidden]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  .mobile-nav[open] { display: contents; }
-  .mobile-nav[open] summary { order: 3; }
-  .mobile-nav nav { width: 100%; order: 4; padding: 8px 0 16px; }
+  .header-inner:has(.mobile-nav[open]) { border-radius: 1rem 1rem 0 0; }
+  .mobile-nav nav { position: absolute; top: 100%; left: -1px; right: -1px; padding: 8px 12px 16px; border: 1px solid var(--og-line); border-top: 0; border-radius: 0 0 1rem 1rem; background: var(--og-panel); box-shadow: 0 16px 24px hsl(var(--canvas) / .12); }
   .mobile-nav nav a { display: flex; gap: 18px; align-items: center; min-height: 56px; padding-inline: 8px; border-top: 1px solid var(--og-line); font-size: 14px; }
   .mobile-nav nav a > span { color: var(--og-muted); font-size: 10px; }
-  .mobile-nav nav a > .ui-icon { margin-left: auto; }
+  .mobile-nav nav a > .nav-arrow { margin-left: auto; }
   .mobile-nav nav a[aria-current='page'] { color: var(--og-accent); }
   .hero { min-height: auto; padding-block: 4.5rem; }
   .hero-copy > p { font-size: 14px; }
   .hero-actions { align-items: stretch; flex-direction: column; gap: 12px; }
   .install code { flex: 1; min-width: 0; font-size: 10px; padding-right: 6px; }
   .install button { padding-inline: 8px; }
-  .install button > span:not(.ui-sr-only) { display: none; }
   .hero-visual { padding: 16px; border-radius: 1rem; }
   .hero-caption { font-size: 9px; flex-wrap: wrap; }
   .proof-grid { gap: 18px; }

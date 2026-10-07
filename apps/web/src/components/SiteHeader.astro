@@ -24,13 +24,13 @@ const links = [
     </nav>
     <div class="header-utilities">
       <ThemeToggle class="theme-control" />
-      <a class="github-link" href="https://github.com/santi020k/og" aria-label="View @santi020k/og on GitHub"><Icon name="github" /><span>Source</span><Icon name="arrow-up-right" /></a>
+      <a class="github-link" href="https://github.com/santi020k/og" aria-label="View @santi020k/og on GitHub"><Icon name="github" /><span>Source</span><Icon name="arrow-up-right" class="nav-arrow" /></a>
     </div>
     <details class="mobile-nav">
       <summary aria-label="Open navigation"><Icon name="menu" /><span>Menu</span></summary>
       <nav aria-label="Mobile navigation">
-        {links.map((link, index) => <a href={link.href} aria-current={active === link.key ? 'page' : undefined}><span aria-hidden="true">0{index + 1}</span>{link.label}<Icon name="arrow-up-right" /></a>)}
-        <a href="https://github.com/santi020k/og"><span aria-hidden="true">04</span>Source on GitHub<Icon name="arrow-up-right" /></a>
+        {links.map((link, index) => <a href={link.href} aria-current={active === link.key ? 'page' : undefined}><span aria-hidden="true">0{index + 1}</span>{link.label}<Icon name="arrow-up-right" class="nav-arrow" /></a>)}
+        <a href="https://github.com/santi020k/og"><span aria-hidden="true">04</span>Source on GitHub<Icon name="arrow-up-right" class="nav-arrow" /></a>
       </nav>
     </details>
   </div>
