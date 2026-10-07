@@ -39,7 +39,9 @@ accepted only when every required item below has evidence from the release commi
 
 - The packed artifact passes `publint`, contains the documented Astro components and stability
   contract, and exposes only the reviewed package subpaths.
-- npm publication uses provenance and is verified from the registry.
+- npm publication uses GitHub OIDC trusted publishing without a token, includes provenance, and
+  is verified from the registry. The package publisher allows direct publishing and matches
+  `santi020k/og`, `release.yml`, and environment `release`.
 - The website deployment succeeds and the live checker accepts a verified public URL, rejects
   missing or invalid verification, and rejects a private address.
 - The matching Git tag and GitHub release are created only after registry verification succeeds.

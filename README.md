@@ -98,9 +98,11 @@ consumer homepage and fails unless each site scores exactly 100. Static consumer
 redirects before deployment.
 
 Package releases are deliberate. Run the **Release** GitHub workflow with a version matching
-`packages/og/package.json`. Publishing uses an existing npm trusted publisher or the `release`
-environment’s `NPM_TOKEN` fallback; the workflow validates the repository, publishes with npm
-provenance, verifies the registry result, and then rebuilds registry-installed consumers before creating the matching Git tag and GitHub release. See
+`packages/og/package.json`. Publishing uses npm trusted publishing through GitHub OIDC, without an
+npm token. Configure the package publisher for owner `santi020k`, repository `og`, workflow
+`release.yml`, and environment `release`, with direct publishing allowed. The workflow validates
+the repository, publishes with npm provenance, verifies the registry result, and then rebuilds
+registry-installed consumers before creating the matching Git tag and GitHub release. See
 the [release acceptance checklist](packages/og/docs/release-acceptance.md) for the complete gate.
 
 ## Find your next step
