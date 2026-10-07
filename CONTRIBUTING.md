@@ -19,7 +19,9 @@ extraction path is not used by this adapter. Consumers wanting a clean dependenc
 an equivalent package-manager override to fflate 0.7.5. Recheck upstream metadata before publication;
 do not claim the workspace audit establishes a clean consumer audit.
 
-The docs consume Lumen 4 and the shared Santi020k Theme palette with locally served Montserrat.
+The docs retain OG’s mint-green palette with Lumen 4 and shared Santi020k typography, using locally
+served Montserrat. Navigation follows the website’s inset ribbon reference (option 3), with an
+attached keyboard-accessible menu on mobile. Light mode uses deeper green accents for contrast.
 Keep package presets brand-neutral; site-specific brand artwork belongs in `apps/web/og.config.mjs`.
 `pnpm --filter @santi020k/og-web run generate:brand` rebuilds the raster app icons from `icon.svg`.
 The website build regenerates icons before OG cards and tracks both source assets in the card cache.

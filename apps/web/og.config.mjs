@@ -2,7 +2,7 @@ import { definePresetConfig } from '@santi020k/og/presets'
 
 const examples = [
   {
-    accent: '#b48df7',
+    accent: '#65f6bd',
     badge: 'Open Graph',
     description: 'A useful default card with no consumer-owned renderer.',
     title: 'Start simple. Stay flexible.',
@@ -45,6 +45,6 @@ export default definePresetConfig({
   preset: {
     brand: { domain: 'og.santi020k.com', logo: 'public/icon.svg', name: '@santi020k/og' },
     remoteImages: { cacheDirectory: '.og-remote-cache' },
-    theme: { background: '#110c1d', foreground: '#dfdde3', muted: '#b6b2bd', panel: '#1c1528' }
+    theme: { background: '#07110e', foreground: '#eafff6', muted: '#9ab2a8', panel: '#11231d' }
   }
 })
