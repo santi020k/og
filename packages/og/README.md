@@ -39,25 +39,6 @@ Add stable package scripts:
 The generated `og.config.mjs` uses the neutral product preset. Change its cards, brand, and theme;
 only create a custom renderer when the project needs a unique composition.
 
-## Inspect a live page
-
-Inspect crawler-facing metadata and the referenced social image without adding a framework plugin:
-
-```bash
-pnpm exec santi-og inspect https://example.com
-pnpm exec santi-og inspect http://localhost:4321 --open
-pnpm exec santi-og inspect https://example.com --json
-```
-
-The inspector follows a bounded redirect chain, limits downloaded HTML and image bytes, reports
-metadata and JSON-LD coverage, and verifies common social-image response properties. `--open`
-serves a local visual report; JSON output is the automation contract.
-
-Programmatic consumers can use `inspectHtml` or `inspectUrl`. Hosted services must supply an
-`authorizeUrl` callback that applies their DNS resolution and network-egress policy to every URL in
-the redirect chain. `assertPublicInspectionUrl` rejects obvious local hostnames and literal private
-addresses, but it is not a substitute for DNS-aware SSRF protection.
-
 ## Inspect a URL
 
 Inspect a deployed page or a local development server with the same metadata and social-image
@@ -78,6 +59,11 @@ warnings half credit, and errors no credit; the individual checks remain the sou
 Programmatic consumers can call `inspectHtml()` or `inspectUrl()` from
 `@santi020k/og/inspect`. `inspectUrl()` accepts a custom Fetch implementation, byte and timeout
 limits, and an authorization callback that runs before the initial request and every redirect.
+
+Hosted services must supply an `authorizeUrl` callback that applies their DNS resolution and
+network-egress policy to every URL in the redirect chain. `assertPublicInspectionUrl` rejects
+obvious local hostnames and literal private addresses, but it is not a substitute for DNS-aware
+SSRF protection.
 
 See [preset design and image presentation](docs/preset-design.md) for layout, typography, long-copy behavior, and regeneration guidance.
 
@@ -319,6 +305,9 @@ final metadata, canonical routes, local social images and dimensions, duplicates
 route-manifest coverage. Use `--json` for automation or `--sarif` for code-scanning systems. See
 [site metadata, schemas, and auditing](./docs/site-metadata-and-auditing.md) for complete examples.
 Add `--standards` to audit sitemap coverage, robots directives, hreflang alternates, and redirects.
+Local social-image paths must remain inside the built site after URL decoding; invalid paths are
+reported as errors. Redirect auditing resolves relative targets from their source route and reports
+self loops and cycles involving multiple routes.
 Add `--llms` to check `llms.txt`, `llms-full.txt`, and per-route Markdown coverage.
 Programmatic consumers can spread `standardAuditRules()` into `auditSite()` or select individual
 rules from `@santi020k/og/audit/rules`. Human output groups repeated findings by root cause after

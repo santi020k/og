@@ -2,11 +2,12 @@
 import { ButtonLink, CopyButton, Icon, ScrollReveal, Stat } from '@santi020k/lumen-astro'
 
 import BaseLayout from '../layouts/BaseLayout.astro'
+import { pages } from '../../site.mjs'
 import PresetGallery from '../components/PresetGallery.astro'
 import SiteFooter from '../components/SiteFooter.astro'
 import SiteHeader from '../components/SiteHeader.astro'
 
-const description = 'Generate polished, deterministic Open Graph images from reusable presets or your own renderer. Built for Astro, Next.js, and plain Node.js.'
+const description = pages.home.description
 
 const features = [
   {
@@ -36,7 +37,7 @@ const steps = [
 ]
 ---
 
-<BaseLayout title="@santi020k/og" description={description}>
+<BaseLayout title={pages.home.title} description={description}>
   <SiteHeader />
 
   <main id="content">

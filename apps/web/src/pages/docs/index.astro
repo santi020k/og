@@ -1,19 +1,21 @@
 ---
-import { ButtonLink, CodeTabs } from '@santi020k/lumen-astro'
+import { Anchor, BackToTop, ButtonLink, CodeTabs, Icon } from '@santi020k/lumen-astro'
+
+import { packageVersion, pages } from '../../../site.mjs'
 
 import PresetGallery from '../../components/PresetGallery.astro'
 import SiteFooter from '../../components/SiteFooter.astro'
 import SiteHeader from '../../components/SiteHeader.astro'
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
-const description = 'Use @santi020k/og v1.0 locale metadata, runtime responses, pinned remote images, reusable audits, JSON-LD recipes, visual presets, and deterministic output management.'
+const description = pages.docs.description
 
 const sections = [
   ['quick-start', 'Quick start'],
   ['presets', 'Visual presets'],
   ['metadata', 'Page metadata'],
   ['site-and-audit', 'Site, schema, and audit'],
-  ['content', 'Markdown content'],
+  ['content-discovery', 'Markdown content'],
   ['typed-catalogs', 'Typed catalogs'],
   ['route-cards', 'Route cards'],
   ['custom-renderers', 'Custom renderers'],
@@ -275,13 +277,13 @@ pnpm exec santi-og inspect http://localhost:4321 --open
 pnpm exec santi-og audit --site dist --site-url https://example.com --sarif
 pnpm exec santi-og audit --site dist --site-url https://example.com --standards
 pnpm exec santi-og migrate --report --json
-pnpm exec santi-og upgrade --to 1.0.0`
+pnpm exec santi-og upgrade --to ${packageVersion}`
 
 const qualityExample = `quality check
 quality check --only santi-og`
 ---
 
-<BaseLayout title="Documentation" description={description}>
+<BaseLayout title={pages.docs.title} description={description}>
   <SiteHeader active="docs" />
 
   <main id="content">
@@ -295,7 +297,7 @@ quality check --only santi-og`
         <p>{description} Start with a useful visual default and customize only what your project needs.</p>
       </div>
       <div class="docs-meta">
-        <span><b>v1.0.0</b> Current docs</span>
+        <span><b>v{packageVersion}</b> Current docs</span>
         <span><b>Node.js 22.18+</b> Runtime</span>
         <span><b>4 presets</b> Included</span>
       </div>
@@ -304,9 +306,9 @@ quality check --only santi-og`
     <div class="docs-grid shell">
       <aside class="docs-sidebar" aria-label="Documentation navigation">
         <p>On this page</p>
-        <nav aria-label="On this page"><ol>
+        <Anchor activationOffset={124} aria-label="On this page"><ol>
           {sections.map(([id, label]) => <li><a href={`#${id}`}>{label}</a></li>)}
-        </ol></nav>
+        </ol></Anchor>
         <a class="docs-source-link" href="https://github.com/santi020k/og">View source <span>↗</span></a>
       </aside>
 
@@ -419,7 +421,7 @@ quality check --only santi-og`
           <p><code>santi-og audit</code> checks final HTML, canonicals, Open Graph and X metadata, h1 and language contracts, image bytes, dimensions and MIME declarations, duplicates, manifest coverage, and route-specific schemas. Add <code>--standards</code> for sitemap, robots, hreflang, and redirects; add <code>--llms</code> for AI-readable Markdown coverage. Reusable audit configs align local and CI policy, and human reports group repeated root causes.</p>
         </section>
 
-        <section id="content">
+        <section id="content-discovery">
           <span class="docs-section-number">04</span>
           <h2>Framework-neutral Markdown and MDX</h2>
           <p><code>collectContentCards</code> reads YAML frontmatter without starting Astro, Next.js, or another framework. It understands nested <code>index.md</code> routes, excludes drafts by default, and tracks each content file as a source.</p>
@@ -601,6 +603,7 @@ quality check --only santi-og`
           <h2>Replace repeated renderers and validators with stable v1.0 workflows.</h2>
           <p>The multi-project migration keeps route data and project-specific contracts local while moving rendering, metadata, schema recipes, archives, and final-output auditing into the library.</p>
           <ButtonLink class="button" variant="unstyled" href="https://github.com/santi020k/og/blob/main/packages/og/docs/migrating-existing-projects.md" showArrow>Read the migration guide</ButtonLink>
+          <BackToTop class="docs-back-to-top"><Icon name="arrow-up" /> Back to top</BackToTop>
         </section>
       </article>
     </div>
@@ -608,3 +611,29 @@ quality check --only santi-og`
 
   <SiteFooter />
 </BaseLayout>
+
+<style>
+  .docs-sidebar :global(a[aria-current='location']) {
+    color: var(--og-accent);
+    border-left-color: var(--og-accent);
+    background: hsl(var(--brand-soft));
+  }
+
+  :global(.docs-back-to-top) {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-height: 44px;
+    margin-top: 1rem;
+    padding: .5rem .75rem;
+    color: var(--og-muted);
+    border: 1px solid var(--og-line);
+    border-radius: .75rem;
+    background: var(--og-panel);
+    cursor: pointer;
+  }
+
+  :global(.docs-back-to-top:hover) {
+    color: var(--og-accent);
+  }
+</style>

@@ -4,6 +4,10 @@
 
 ## 1.2.0 - 2026-10-07
 
+- Contain decoded social-image audit paths within the build and detect multi-hop redirect loops.
+- Give website routes distinct fingerprinted social cards and contextual JSON-LD; enforce built
+  sitemap, robots, manifest, and image audits. Add current-section docs navigation and back-to-top.
+- Bound remote-image downloads while reading, including chunked responses without Content-Length.
 - Add opt-in content-versioned route manifest URLs and `getRouteManifestImage` for selecting
   generated metadata images, with deterministic invalidation from the full generation fingerprint.
 - Document native Quality integration and add scheduled production metadata score checks.

@@ -25,3 +25,10 @@ attached keyboard-accessible menu on mobile. Light mode uses deeper green accent
 Keep package presets brand-neutral; site-specific brand artwork belongs in `apps/web/og.config.mjs`.
 `pnpm --filter @santi020k/og-web run generate:brand` rebuilds the raster app icons from `icon.svg`.
 The website build regenerates icons before OG cards and tracks both source assets in the card cache.
+
+Website page definitions live in `apps/web/site.mjs`. They drive titles, descriptions, route-specific
+social cards, schema requirements, and the generated route manifest. The head consumes fingerprinted
+manifest URLs so regenerated cards get new public URLs. Gallery examples remain separate.
+Every website build runs `audit:site` against final HTML, sitemap, robots, unique images, and the
+manifest before compiling the Cloudflare function. Public build variables participate in Turbo
+cache keys. Recheck rendered docs anchors, reduced motion, and back-to-top after navigation edits.

@@ -4,6 +4,7 @@ import path from 'node:path'
 
 import sharp from 'sharp'
 
+import { resolveInside } from './paths.js'
 import type { OgRouteManifest } from './route-manifest.js'
 
 export type AuditSeverity = 'error' | 'warning'
@@ -212,15 +213,17 @@ const localImagePath = (
   directory: string,
   siteUrl: URL | undefined
 ): string | undefined => {
+  let url: URL
+
   try {
-    const url = new URL(image, siteUrl)
-
-    if (siteUrl && url.origin !== siteUrl.origin) return undefined
-
-    return path.join(directory, decodeURIComponent(url.pathname).replace(/^\/+/, ''))
+    url = new URL(image, siteUrl)
   } catch {
     return undefined
   }
+
+  if (siteUrl && url.origin !== siteUrl.origin) return undefined
+
+  return resolveInside(directory, decodeURIComponent(url.pathname).replace(/^\/+/, ''), 'social image')
 }
 
 const readRouteManifest = async (
@@ -299,6 +302,7 @@ export const auditSite = async (options: SiteAuditOptions): Promise<SiteAuditRes
 
   const pages: AuditedPage[] = []
   const issues: AuditIssue[] = []
+  const localImages = new Map<string, string>()
 
   for (const file of files) {
     const parsed = parseHtml(await readFile(file, 'utf8'))
@@ -351,7 +355,15 @@ export const auditSite = async (options: SiteAuditOptions): Promise<SiteAuditRes
     }
 
     if (page.indexable && page.image) {
-      const imagePath = localImagePath(page.image, directory, siteUrl)
+      let imagePath: string | undefined
+
+      try {
+        imagePath = localImagePath(page.image, directory, siteUrl)
+      } catch {
+        issues.push(issue(page, 'invalid-image-path', 'Social image URL must resolve inside the built site.'))
+      }
+
+      if (imagePath) localImages.set(page.file, imagePath)
 
       if (imagePath && !await fileExists(imagePath)) {
         issues.push(issue(page, 'missing-image-file', `Social image does not exist: ${imagePath}`))
@@ -436,7 +448,7 @@ export const auditSite = async (options: SiteAuditOptions): Promise<SiteAuditRes
     const digests = new Map<string, AuditedPage>()
 
     for (const page of pages.filter(candidate => candidate.indexable && candidate.image)) {
-      const imagePath = localImagePath(page.image ?? '', directory, siteUrl)
+      const imagePath = localImages.get(page.file)
 
       if (!imagePath || !await fileExists(imagePath)) continue
 

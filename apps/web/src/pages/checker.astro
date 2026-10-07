@@ -17,8 +17,9 @@ import {
 import SiteFooter from '../components/SiteFooter.astro'
 import SiteHeader from '../components/SiteHeader.astro'
 import BaseLayout from '../layouts/BaseLayout.astro'
+import { pages } from '../../site.mjs'
 
-const description = 'Inspect Open Graph images, social metadata, canonical URLs, robots directives, and structured data for public or localhost websites.'
+const description = pages.checker.description
 const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '1x00000000000000000000AA'
 
 const localCommands = [
@@ -37,7 +38,7 @@ const localCommands = [
 ]
 ---
 
-<BaseLayout title="OG & metadata checker" description={description}>
+<BaseLayout title={pages.checker.title} description={description}>
   <SiteHeader active="checker" />
 
   <main id="content" class="checker-page">

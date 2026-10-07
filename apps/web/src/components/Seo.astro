@@ -1,60 +1,46 @@
 ---
 import MetadataHead from '@santi020k/og/astro/head'
-import { definePageMetadata } from '@santi020k/og/metadata'
-import { defineSchema, serializeJsonLd } from '@santi020k/og/schema'
+import { composeJsonLd, defineSchema, serializeJsonLd } from '@santi020k/og/schema'
+import manifest from '../../public/og/manifest.json'
+import { pages, site } from '../../site.mjs'
 
 interface Props {
   description: string
-  image?: string
   title: string
 }
 
-const { description, image = '/og/default.webp', title } = Astro.props
-const canonical = new URL(Astro.url.pathname, Astro.site)
-
-const page = definePageMetadata({
-  description,
-  image: {
-    alt: '@santi020k/og package card',
-    height: 630,
-    output: image.replace(/^\/og\//u, ''),
-    width: 1200
-  },
-  pathname: canonical.pathname,
-  title
-})
-
-const site = {
-  locale: 'en_US',
-  publicImagePath: '/og',
-  siteName: '@santi020k/og',
-  siteUrl: Astro.site ?? Astro.url.origin,
-  titleTemplate: title === '@santi020k/og' ? '%s — Open Graph image generation' : '%s — @santi020k/og'
-}
-
-const structuredData = defineSchema({
-  '@type': 'SoftwareSourceCode',
-  codeRepository: 'https://github.com/santi020k/og',
-  description,
-  license: 'https://opensource.org/license/mit',
-  name: '@santi020k/og',
-  programmingLanguage: 'TypeScript',
-  runtimePlatform: 'Node.js',
-  url: canonical.href
-})
+const { description, title } = Astro.props
+const pathname = Astro.url.pathname.replace(/\/$/u, '') || '/'
+const definition = Object.values(pages).find(page => page.pathname === pathname)
+if (!definition) throw new Error(`Missing page metadata for ${pathname}`)
+const route = Object.values(manifest.routes).find(route => route.pathname === pathname)
+const image = route?.images.find(image => image.primary)
+if (!image?.url) throw new Error(`Missing generated social card for ${pathname}`)
+const page = site.page({ ...definition, description, title, image: { ...definition.image, url: image.url } })
+const canonical = new URL(page.pathname, site.options.siteUrl)
+const author = defineSchema({ '@type': 'Person', '@id': 'https://santi020k.com/#person', name: 'Santiago Molina', url: 'https://santi020k.com' })
+const website = defineSchema({ '@type': 'WebSite', '@id': new URL('/#website', site.options.siteUrl).href, name: '@santi020k/og', url: site.options.siteUrl.toString(), inLanguage: 'en', author })
+const webPage = defineSchema({ '@type': 'WebPage', '@id': `${canonical.href}#page`, name: title, description, url: canonical.href, isPartOf: { '@type': 'WebSite', '@id': website['@id'] }, author })
+const context = pathname === '/checker'
+  ? defineSchema({ '@type': 'WebApplication', name: title, description, url: canonical.href, applicationCategory: 'DeveloperApplication', operatingSystem: 'Any', author })
+  : pathname === '/docs'
+    ? defineSchema({ '@type': 'BreadcrumbList', itemListElement: [
+        defineSchema({ '@type': 'ListItem', position: 1, name: 'Home', item: new URL('/', site.options.siteUrl).href }),
+        defineSchema({ '@type': 'ListItem', position: 2, name: 'Documentation', item: canonical.href })
+      ] })
+    : defineSchema({ '@type': 'SoftwareSourceCode', name: '@santi020k/og', description, url: canonical.href, codeRepository: 'https://github.com/santi020k/og', license: 'https://opensource.org/license/mit', programmingLanguage: 'TypeScript', runtimePlatform: 'Node.js', author })
+const structuredData = composeJsonLd(website, webPage, context)
 ---
 
-<MetadataHead {page} {site} />
+<MetadataHead {page} site={site.options} />
 <meta name="author" content="Santiago Molina" />
 <meta name="generator" content={Astro.generator} />
 <meta name="theme-color" content="#07110e" media="(prefers-color-scheme: dark)" />
 <meta name="theme-color" content="#f5faf7" media="(prefers-color-scheme: light)" />
 <meta name="color-scheme" content="light dark" />
-
 <link rel="sitemap" href="/sitemap-index.xml" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="icon" href="/icon-192.png" sizes="192x192" type="image/png" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="manifest" href="/site.webmanifest" />
-
 <script type="application/ld+json" set:html={serializeJsonLd(structuredData)} is:inline />

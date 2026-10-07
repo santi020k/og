@@ -1,4 +1,5 @@
 import { definePresetConfig } from '@santi020k/og/presets'
+import { pages, site } from './site.mjs'
 
 const examples = [
   {
@@ -34,11 +35,18 @@ const examples = [
 ]
 
 export default definePresetConfig({
-  cards: examples.map(example => ({
+  routeManifest: { file: 'public/og/manifest.json', publicPath: '/og', cacheBust: true },
+  cards: [...Object.values(pages).map(page => site.card(page, {
+    data: definition => ({
+      title: definition.title, description: page.cardDescription, variant: page.variant,
+      accent: '#65f6bd', badge: page.pathname === '/' ? 'Open Graph' : page.title,
+      ...(page.variant === 'product' ? { image: 'public/icon-512.png', imagePresentation: { fit: 'contain', padding: 72 } } : {})
+    })
+  })), ...examples.map(example => ({
     aliases: example.variant === 'product' ? ['default.webp'] : undefined,
     data: example,
     output: `presets/${example.variant}.webp`
-  })),
+  }))],
   cache: { sources: ['public/icon.svg', 'public/icon-512.png'] },
   clean: true,
   outputDirectory: 'public/og',
