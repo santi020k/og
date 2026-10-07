@@ -43,3 +43,18 @@ accepted only when every required item below has evidence from the release commi
 - The website deployment succeeds and the live checker accepts a verified public URL, rejects
   missing or invalid verification, and rejects a private address.
 - The matching Git tag and GitHub release are created only after registry verification succeeds.
+
+## Publication and recovery
+
+Open the release branch as a pull request into `main`, resolve review findings, and wait for
+required CI and the Node.js 22/24 consumer gates before merging. Dispatch the Release workflow
+from `main` with the matching package version; publication is refused from other branches.
+Verify that the workflow, npm artifact, tag, and GitHub Release all refer to that merged commit.
+The website deployment also runs only from `main`.
+
+A published npm version or Git tag must never be replaced. If package validation fails after
+publication, fix forward with a new patch version through the same pull-request and Actions
+workflow. If publication has not happened, fix the candidate and rerun the failed workflow.
+For a website regression, revert the offending changes through a reviewed pull request into
+`main`; the normal deployment workflow restores the previous behavior. Preserve the release
+evidence and rerun live metadata, sitemap, and checker smoke checks after recovery.
