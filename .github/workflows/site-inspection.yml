@@ -31,8 +31,6 @@ jobs:
             url: https://eslint.santi020k.com
           - name: Lumen UI
             url: https://lumen.santi020k.com
-          - name: MeMudo.ai
-            url: https://memudo.ai
           - name: Open Graph
             url: https://og.santi020k.com
           - name: PostLens
