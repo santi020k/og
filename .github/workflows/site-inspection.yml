@@ -58,7 +58,14 @@ jobs:
         env:
           SITE_URL: ${{ matrix.url }}
         run: |
-          node packages/og/dist/cli.js inspect "$SITE_URL" --json > inspection.json
+          inspection_status=0
+          node packages/og/dist/cli.js inspect "$SITE_URL" --json > inspection.json || inspection_status=$?
+
+          # Metadata errors still produce a report; print its diagnostics before failing.
+          if [ "$inspection_status" -ne 0 ] && [ ! -s inspection.json ]; then
+            exit "$inspection_status"
+          fi
+
           node --input-type=module <<'NODE'
           import { readFile } from 'node:fs/promises'
 
