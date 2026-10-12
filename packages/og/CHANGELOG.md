@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.2.1 - 2026-10-12
+
+- Remove the beta consumer from production metadata monitoring and project audit notes.
+- Print metadata inspection diagnostics before failing the production score workflow.
+
 ## 1.2.0 - 2026-10-07
 
 - Align deployed website canonicals, navigation, and sitemap routes with Cloudflare directory URLs,
