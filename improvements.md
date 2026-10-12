@@ -14,7 +14,7 @@ AI-readable documentation outputs.
 - Existing library adopters: ContracTrack, Astro Doctor, commitprompt, Cult, eslint-config-basic,
   Lumen, PostLens, santi020k-theme, santi020k.com (`website`), and workspace-organizer.
 - Projects with independent Open Graph or metadata implementations: aaronmgz, Coolstead, Dep
-  Beacon, Difftale, Fenix, the `lumen-production-cleanup` worktree, memudo.ai, Quality, and Roadscore.
+  Beacon, Difftale, Fenix, the `lumen-production-cleanup` worktree, Quality, and Roadscore.
 - Directories without a relevant website image pipeline: `_to_delete`, extensions, homebrew-tap,
   observatory, and santi020k-way. Observatory catalogs the package but does not consume its image or
   metadata APIs.
@@ -45,7 +45,7 @@ standards-based response helper around `OgRenderer`, not an Astro-only endpoint 
 
 ### Localization needs one route matrix
 
-aaronmgz and memudo.ai repeat canonical, hreflang, locale, and route-prefix logic. Metadata and
+Localized sites repeat canonical, hreflang, locale, and route-prefix logic. Metadata and
 auditing drift when each surface rebuilds that matrix independently. Locale helpers now accept both
 neutral and already-localized routes and feed portable HTML, Next.js metadata, and built-site audit
 expectations.
@@ -78,8 +78,8 @@ reviewable.
 
 ## What was validated for 0.8
 
-- MeMudo.ai now exercises the portable Next.js adapter and a single locale route matrix for six
-  statically generated Spanish and English routes.
+- The portable Next.js adapter and locale route matrix support statically generated Spanish and
+  English routes.
 - The documentation site exercises a commit-pinned, digest-verified remote image during a real
   build.
 - The published export surface and root runtime exports are locked by contract tests.
@@ -117,7 +117,7 @@ reviewable.
 - Add an adoption-report command that inventories sibling or workspace projects, distinguishes
   shared mechanics from retained product policy, and measures generated cards, audited routes, and
   removable orchestration without mutating consumers.
-- Extend adoption from the completed Quality, aaronmgz, and MeMudo.ai pilots only when another
+- Extend adoption from the completed Quality and aaronmgz pilots only when another
   consumer exposes a repeated contract gap; avoid adding framework-specific adapters without that
   evidence.
 - Keep single-image product sites such as Coolstead, Difftale, Fenix, and Roadscore on simple static
