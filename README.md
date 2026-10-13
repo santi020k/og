@@ -84,6 +84,13 @@ pnpm test:consumers
 
 ## Deployment and release
 
+Automatic website deployment waits for both Node.js validation jobs and the packed consumer tests
+on the same `main` revision. Website path filtering happens before setup; a failed prerequisite
+prevents deployment. Manual website deployments run these checks first, and deployment refuses
+website inputs that differ from current `main`. Root prose-only updates do not block a pending
+validated website change. PR validation cancels superseded PR runs; main validation and deployment
+are allowed to finish.
+
 The website and its protected public-URL inspection function deploy to the `santi020k-og`
 Cloudflare Pages project when changes reach `main`. GitHub uses the `website-production`
 environment, the `CLOUDFLARE_API_TOKEN` and

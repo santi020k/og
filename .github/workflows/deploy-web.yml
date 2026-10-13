@@ -1,16 +1,7 @@
 name: Deploy website
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/web/**"
-      - "packages/og/**"
-      - ".github/workflows/deploy-web.yml"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "turbo.json"
+  workflow_call: {}
   workflow_dispatch: {}
 
 permissions:
@@ -19,7 +10,8 @@ permissions:
 
 concurrency:
   group: deploy-web-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
+  queue: max
 
 env:
   CLOUDFLARE_PAGES_PROJECT_NAME: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME || 'santi020k-og' }}
@@ -27,9 +19,34 @@ env:
   PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
 
 jobs:
+  preflight:
+    name: Validate manual deployment (Node ${{ matrix.node-version }})
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22, 24]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Set up pnpm workspace
+        uses: santi020k/quality/actions/setup-pnpm@eec1701b98bcc0b76d36af288ee78a0369cd84cc # v1
+        with:
+          pnpm-version: 10.32.1
+          node-version: ${{ matrix.node-version }}
+      - run: pnpm run validate
+      - name: Test packed consumers
+        if: matrix.node-version == 22
+        run: pnpm run test:consumers
+
   deploy:
     name: Build and deploy website
-    if: github.ref == 'refs/heads/main'
+    needs: preflight
+    if: >-
+      !cancelled() && github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && needs.preflight.result == 'success'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
@@ -37,7 +54,12 @@ jobs:
       url: ${{ env.PUBLIC_SITE_URL }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Verify current website inputs
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          bash .github/scripts/website-inputs.sh "$GITHUB_SHA" FETCH_HEAD
 
       - name: Set up pnpm workspace
         uses: santi020k/quality/actions/setup-pnpm@eec1701b98bcc0b76d36af288ee78a0369cd84cc # v1
@@ -55,6 +77,9 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+          git fetch --no-tags --depth=1 origin main
+          bash .github/scripts/website-inputs.sh "$GITHUB_SHA" FETCH_HEAD
 
           pnpm exec wrangler pages deploy dist \
             --cwd=apps/web \
