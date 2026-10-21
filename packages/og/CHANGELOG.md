@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Make source fingerprints relative to the configured project root so copied checkout caches and
+  versioned image URLs remain stable. Preserve source identity, content and output integrity checks;
+  existing caches regenerate once when adopting the portable fingerprint format.
+
 ## 1.2.1 - 2026-10-12
 
 - Remove the beta consumer from production metadata monitoring and project audit notes.
