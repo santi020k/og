@@ -287,7 +287,7 @@ const prepareCard = async <T>(parameters: {
   const fingerprint = await withSourceContext(
     `Unable to fingerprint OG card ${destinationKey(primary)}`,
     () => hashValues([
-      'santi020k-og-cache-v2',
+      'santi020k-og-cache-v3',
       GENERATOR_VERSION,
       typeof parameters.config.cache === 'object' ? parameters.config.cache.key ?? '' : '',
       parameters.options.configFingerprint ?? '',
@@ -296,7 +296,7 @@ const prepareCard = async <T>(parameters: {
       context.format,
       context.height,
       context.width
-    ], sources)
+    ], sources, parameters.root)
   )
 
   return { card, context, destinations, fingerprint, kind: 'card' }
@@ -315,10 +315,10 @@ const prepareAsset = async (parameters: {
   const fingerprint = await withSourceContext(
     `Unable to fingerprint OG asset ${destinationKey(asset)} from ${sourcePath}`,
     () => hashValues([
-      'santi020k-og-asset-v1',
+      'santi020k-og-asset-v2',
       parameters.options.configFingerprint ?? '',
       destinations.map(destination => destination.key)
-    ], [sourcePath])
+    ], [sourcePath], parameters.root)
   )
 
   return { asset, destinations, fingerprint, kind: 'asset', sourcePath }

@@ -8,29 +8,41 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+  CI_HEAD_SHA: ${{ github.sha }}
+
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - name: Set up pnpm workspace
         uses: santi020k/quality/actions/setup-pnpm@eec1701b98bcc0b76d36af288ee78a0369cd84cc # v1
         with:
           pnpm-version: 10.32.1
           node-version: 22
-      - run: pnpm run validate
+      - run: pnpm run ci:check
 
   validate-node-24:
     name: Validate on Node.js 24
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - name: Set up pnpm workspace
         uses: santi020k/quality/actions/setup-pnpm@eec1701b98bcc0b76d36af288ee78a0369cd84cc # v1
         with:
           pnpm-version: 10.32.1
           node-version: 24
-      - run: pnpm run validate
+      - run: pnpm run ci:check
 
   consumer-smoke:
     name: Test packed Astro, Next.js, and Node consumers
@@ -38,10 +50,18 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Select consumer checks
+        id: scope
+        run: node packages/og/scripts/ci-scope.mjs
       - name: Set up pnpm workspace
+        if: steps.scope.outputs.package == 'true'
         uses: santi020k/quality/actions/setup-pnpm@eec1701b98bcc0b76d36af288ee78a0369cd84cc # v1
         with:
           pnpm-version: 10.32.1
           node-version: 22
       - run: pnpm --filter @santi020k/og build
+        if: steps.scope.outputs.package == 'true'
       - run: pnpm run test:consumers
+        if: steps.scope.outputs.package == 'true'

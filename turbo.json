@@ -25,6 +25,11 @@
     "typecheck": {
       "dependsOn": ["^build"]
     },
+    "ci:web": {
+      "env": ["PUBLIC_SITE_URL", "PUBLIC_TURNSTILE_SITE_KEY"],
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "coverage/**", "public/og/**"]
+    },
     "validate": {
       "env": ["PUBLIC_SITE_URL", "PUBLIC_TURNSTILE_SITE_KEY"],
       "dependsOn": ["^validate"],

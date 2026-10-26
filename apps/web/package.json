@@ -13,13 +13,14 @@
     "preview": "astro preview",
     "test": "vitest run",
     "typecheck": "astro check",
-    "validate": "pnpm run clean && pnpm run build",
-    "audit:site": "node ../../packages/og/dist/cli.js audit --config og.audit.config.mjs"
+    "validate": "pnpm run clean && pnpm run test && pnpm run build",
+    "audit:site": "node ../../packages/og/dist/cli.js audit --config og.audit.config.mjs",
+    "ci:web": "pnpm run validate"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",
     "@fontsource-variable/montserrat": "^5.3.0",
-    "@santi020k/lumen-astro": "^4.0.0",
+    "@santi020k/lumen-astro": "4.1.0",
     "@santi020k/og": "workspace:*",
     "@santi020k/theme": "^2.0.1",
     "astro": "^7.3.6"

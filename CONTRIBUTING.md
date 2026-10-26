@@ -40,3 +40,40 @@ The release job pins npm 12.2.0 (compatible with its Node.js 22 runtime) and pub
 through GitHub OIDC. Its npm trusted publisher must match `santi020k/og`, workflow `release.yml`,
 and environment `release`, with direct publishing allowed. No npm token is injected. pnpm 10
 remains the workspace package manager.
+
+## Affected CI checks
+
+`pnpm run ci:check` uses Git's merge base with `CI_BASE_SHA` and `CI_HEAD_SHA` to
+select website-only checks for ordinary pull requests. Website source, assets,
+functions, and tests still run their complete tests, type checking, production
+build, site audit, and function build, with the OG package built first. Dependency
+auditing, spelling, and selector regression tests always run.
+
+Package changes, shared configuration, unknown paths, incomplete history, pushes,
+and release branches use the full `validate` gate on both supported Node versions.
+The packed Astro, Next.js, and Node consumers run whenever package validation is
+required. `pnpm run ci:check --full` forces the complete local gate; the release
+workflow also retains its full validation and published-package consumer checks.
+Local selection includes staged, unstaged, and untracked files when the head is
+`HEAD`; explicit commit SHAs compare only committed changes. Renames include both
+paths, and missing history falls back to full validation.
+
+Compatible workspace overrides also patch Zod 4, Undici 7/8, and fast-uri 3.
+These development dependency fixes do not change the documented consumer-side
+Satori advisory. If selection regresses, run with `--full` or revert the CI scope
+change through a reviewed pull request; release validation remains the safety net.
+
+### Rollout benchmark
+
+On macOS arm64 with Node 22, a website-source edit reduced the local `ci:check`
+gate from 22.06 s to 15.36 s with separate empty Turbo task caches (30.4%). Two
+warm runs per mode had medians of 3.07 s full and 2.87 s affected (6.3%); warm
+savings were small and varied between runs. Both modes included dependency audit,
+selector tests, spelling, and complete website validation. Installation and the
+separate Node 24 and packed-consumer jobs were excluded. Compiler caches were
+prewarmed equally and remote caching was disabled. These are local task timings,
+not end-to-end GitHub Actions durations.
+
+The private `ci:web` task retains its OG build dependency in Turbo's cache key.
+A regression test verifies that changing core source invalidates the website task,
+even when only website validation is selected.

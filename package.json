@@ -15,7 +15,8 @@
     "typecheck": "turbo run typecheck",
     "validate": "pnpm run lint:spell && turbo run validate",
     "commit": "commitprompt",
-    "hooks:install": "quality hooks install"
+    "hooks:install": "quality hooks install",
+    "ci:check": "node packages/og/scripts/check-ci.mjs"
   },
   "devDependencies": {
     "@santi020k/commitprompt": "1.1.0",
@@ -30,7 +31,11 @@
   "pnpm": {
     "overrides": {
       "satori>fflate": "0.7.5",
-      "miniflare>sharp": "0.35.5"
+      "miniflare>sharp": "0.35.5",
+      "zod@>=4 <4.6.7": "4.6.7",
+      "undici@>=7 <7.30.1": "7.30.1",
+      "undici@>=8 <8.12.3": "8.12.3",
+      "fast-uri@>=3 <3.1.9": "3.1.9"
     }
   }
 }
