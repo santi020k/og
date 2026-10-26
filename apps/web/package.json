@@ -13,8 +13,9 @@
     "preview": "astro preview",
     "test": "vitest run",
     "typecheck": "astro check",
-    "validate": "pnpm run clean && pnpm run build",
-    "audit:site": "node ../../packages/og/dist/cli.js audit --config og.audit.config.mjs"
+    "validate": "pnpm run clean && pnpm run test && pnpm run build",
+    "audit:site": "node ../../packages/og/dist/cli.js audit --config og.audit.config.mjs",
+    "ci:web": "pnpm run validate"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",
