@@ -77,3 +77,32 @@ not end-to-end GitHub Actions durations.
 The private `ci:web` task retains its OG build dependency in Turbo's cache key.
 A regression test verifies that changing core source invalidates the website task,
 even when only website validation is selected.
+
+## Quality v2 rollout
+
+The pending v1.2.2 release pins Quality 2.0.0 and the shared setup Action to its
+immutable release revision. `quality-impact.json` records package, website,
+consumer and security boundaries. CI records shadow plans in parallel; it still
+executes the existing qualified website-only classifier and full release checks.
+Unknown paths, shared configuration, unavailable history and release events use
+full validation. The required aggregate rejects failed, cancelled or skipped jobs.
+
+The shared setup persists Turbo task outputs with operating-system, architecture,
+resolved Node/pnpm and source-revision cache isolation. Turbo hashes package inputs,
+the lockfile and the website's public configuration; generated Cloudflare function
+outputs are restored with the website. Live dependency audits and production URL
+inspection remain outside the task cache. Scheduled inspection reuses the package
+build through Turbo while fetching every target again. Production deployments
+remain serialized and are no longer cancelled midway by a newer push.
+
+Run `QUALITY_BINARY=/path/to/quality node --test packages/og/tests/quality-impact.node-test.mjs`
+for actual CLI policy fixtures. Before release, run `pnpm validate` and the existing
+packed/registry consumer gates. No hosted timing or deployment improvement is
+claimed from local validation. Recovery is to revert these workflow/cache changes
+and run full validation; no secret, data or published-tag migration is required.
+
+Persisted Turbo task hashes include `QUALITY_TASK_RUNTIME`, captured after setup
+from the actual Node and pnpm versions, platform, and architecture. This prevents
+a broad cache restore from reusing outputs after a runtime patch changes, even
+when the declared Node selector remains unchanged. Local runs without that
+variable use a separate task identity.

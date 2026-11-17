@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://quality-cli.santi020k.chatgpt.site/quality.schema.json
+# yaml-language-server: $schema=https://quality.santi020k.com/quality.schema.json
 # quality.yml — one code-quality workflow for this repository
 # Tools are auto-detected; entries below make the selected policy explicit.
 # A canonical repository script replaces analyzer checks when one is detected,
