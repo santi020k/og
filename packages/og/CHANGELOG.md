@@ -10,6 +10,9 @@
   complete release validation and dependency-aware cache invalidation. Keep website function tests
   in validation and refresh compatible development security dependencies.
 
+- Adopt Quality v2 shadow impact planning and persistent toolchain-isolated task caches,
+  preserving fresh security and production metadata checks and full release qualification.
+
 ## 1.2.1 - 2026-10-12
 
 - Remove the beta consumer from production metadata monitoring and project audit notes.
