@@ -25,7 +25,7 @@
     "wrangler": "^4.148.0"
   },
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=22.23.4"
   },
   "packageManager": "pnpm@10.32.1",
   "pnpm": {
@@ -35,7 +35,16 @@
       "zod@>=4 <4.6.7": "4.6.7",
       "undici@>=7 <7.30.1": "7.30.1",
       "undici@>=8 <8.12.3": "8.12.3",
-      "fast-uri@>=3 <3.1.9": "3.1.9"
+      "fast-uri@>=3 <3.1.9": "3.1.9",
+      "minimatch@>=7 <11.0.1": "11.0.9",
+      "eslint-plugin-import-x@4": "4.18.1"
+    },
+    "packageExtensions": {
+      "@astrojs/astro2tsx@0.1.2": {
+        "dependencies": {
+          "@emnapi/runtime": "1.11.3"
+        }
+      }
     }
   }
 }

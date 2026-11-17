@@ -1,6 +1,6 @@
 # Contributing
 
-Install Node.js 22.22.3+ or a compatible Node.js 24 release and pnpm 10.32.1, then run:
+Install Node.js 22.23.4+ or a compatible Node.js 24 release and pnpm 10.32.1, then run:
 
 ```bash
 pnpm install
@@ -19,7 +19,7 @@ extraction path is not used by this adapter. Consumers wanting a clean dependenc
 an equivalent package-manager override to fflate 0.7.5. Recheck upstream metadata before publication;
 do not claim the workspace audit establishes a clean consumer audit.
 
-The docs retain OG’s mint-green palette with Lumen 4 and shared Santi020k typography, using locally
+The docs retain OG’s mint-green palette with Lumen 5 and shared Santi020k typography, using locally
 served Montserrat. Navigation follows the website’s inset ribbon reference (option 3), with an
 attached keyboard-accessible menu on mobile. Light mode uses deeper green accents for contrast.
 Keep package presets brand-neutral; site-specific brand artwork belongs in `apps/web/og.config.mjs`.
@@ -106,3 +106,14 @@ from the actual Node and pnpm versions, platform, and architecture. This prevent
 a broad cache restore from reusing outputs after a runtime patch changes, even
 when the declared Node selector remains unchanged. Local runs without that
 variable use a separate task identity.
+
+The release uses Astro 7.4.12 and scoped minimatch 11.0.9 / import-x 4.18.1
+security updates. The public OG runtime floor remains unchanged. Dependency-security
+fixtures exercise the installed import rule and its matcher boundary. Remove these
+overrides when upstream dependencies declare the patched ranges.
+
+The scoped `@astrojs/astro2tsx` 0.1.2 package extension supplies its missing
+`@emnapi/runtime` 1.11.3 dependency, matching its declared core version. Without
+it, a separate bundler runtime 2 beta satisfies the transitive peer and crashes
+Astro Check. Remove the extension when upstream declares the matching runtime;
+other consumers retain their own versions.
