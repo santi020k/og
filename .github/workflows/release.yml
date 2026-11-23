@@ -8,6 +8,11 @@ on:
         required: true
         default: 1.2.2
         type: string
+      revalidate:
+        description: Repeat full validation even when CI already passed for this commit
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -25,6 +30,7 @@ jobs:
       name: release
       url: https://www.npmjs.com/package/@santi020k/og/v/${{ inputs.version }}
     permissions:
+      actions: read
       contents: write
       id-token: write
     steps:
@@ -82,11 +88,23 @@ jobs:
             exit 1
           fi
 
+      # The CI push run on main already ran the full gate on Node.js 22 and 24 and the packed
+      # consumers for this exact commit. Without that confirmed result, both steps run here.
+      - name: Look for a successful CI run on this commit
+        id: ci
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node packages/og/scripts/verify-ci-evidence.mjs
+
       - name: Validate release candidate
+        if: inputs.revalidate || steps.ci.outputs.trusted != 'true'
         run: pnpm run validate
 
       - name: Test packed release candidate in consumers
+        if: inputs.revalidate || steps.ci.outputs.trusted != 'true'
         run: pnpm run test:consumers
+
+      # prepack always rebuilds and validates the package that is published.
 
       - name: Publish package
         working-directory: packages/og
