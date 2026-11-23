@@ -22,6 +22,14 @@ accepted only when every required item below has evidence from the release commi
 - `pnpm run test:consumers` packs the candidate, installs it without workspace links, renders an
   image in plain Node.js, builds the Astro metadata component, and builds the Next.js metadata
   adapter.
+- The Release workflow skips its own repository validation and packed-consumer run only when the
+  GitHub API confirms a completed, successful CI push run on `main` for the release commit. That
+  run covers the complete suite on Node.js 22 and 24 and the packed consumers. A missing, failed,
+  cancelled, in-progress or unreadable result runs both steps in the release job. Set the
+  `revalidate` input to repeat them regardless.
+- Every publication runs a fresh dependency audit at moderate severity or above, even when
+  the exact commit already has successful CI evidence. Audits are never restored from task caches.
+- Publication always rebuilds and validates the package through `prepack`.
 - The Release workflow repeats the consumer suite against the exact package downloaded from npm
   before creating the Git tag and GitHub release.
 

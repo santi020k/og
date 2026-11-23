@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -75,5 +75,37 @@ test('Satori worker helper loads renderer options without a wrapper entry module
     assert.match(await readFile(path.join(root, 'public/og/worker.svg'), 'utf8'), /<svg/)
   } finally {
     await rm(root, { force: true, recursive: true })
+  }
+})
+
+test('worker caches survive relocation and still track transitive helper changes', async () => {
+  const original = await mkdtemp(path.join(tmpdir(), 'og-worker-original-'))
+  const moved = await mkdtemp(path.join(tmpdir(), 'og-worker-moved-'))
+
+  try {
+    await writeFile(path.join(original, 'helper.mjs'), 'export const suffix = "!"')
+
+    await writeFile(path.join(original, 'renderer.mjs'),
+      'import { suffix } from "./helper.mjs"; export default data => `<svg>${data.title}${suffix}</svg>`')
+
+    const config = root => ({
+      cards: [{ data: { title: 'Worker' }, output: 'index.svg' }],
+      renderer: defineWorkerRenderer({ module: path.join(root, 'renderer.mjs') }),
+      root
+    })
+
+    await generate(config(original))
+
+    await cp(original, moved, { recursive: true })
+
+    assert.deepEqual((await generate(config(moved))).skipped, ['index.svg'])
+
+    await writeFile(path.join(moved, 'helper.mjs'), 'export const suffix = "?"')
+
+    assert.deepEqual((await generate(config(moved))).generated, ['index.svg'])
+
+    assert.equal(await readFile(path.join(moved, 'public/og/index.svg'), 'utf8'), '<svg>Worker?</svg>')
+  } finally {
+    await Promise.all([original, moved].map(root => rm(root, { force: true, recursive: true })))
   }
 })

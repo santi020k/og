@@ -1,5 +1,5 @@
 {
-  "generatorVersion": "1.2.1",
+  "generatorVersion": "1.2.2",
   "routes": {
     "/": {
       "alt": "Generate deterministic Open Graph images with @santi020k/og",
@@ -10,8 +10,8 @@
           "height": 630,
           "output": "pages/home.webp",
           "primary": true,
-          "url": "/og/pages/home.webp?v=89a13c96917c",
-          "version": "89a13c96917c",
+          "url": "/og/pages/home.webp?v=5ec5d4d59d80",
+          "version": "5ec5d4d59d80",
           "width": 1200
         }
       ],
@@ -31,8 +31,8 @@
           "height": 630,
           "output": "pages/docs.webp",
           "primary": true,
-          "url": "/og/pages/docs.webp?v=fd80b17474b5",
-          "version": "fd80b17474b5",
+          "url": "/og/pages/docs.webp?v=fd375523a911",
+          "version": "fd375523a911",
           "width": 1200
         }
       ],
@@ -52,8 +52,8 @@
           "height": 630,
           "output": "pages/checker.webp",
           "primary": true,
-          "url": "/og/pages/checker.webp?v=66cccab85c60",
-          "version": "66cccab85c60",
+          "url": "/og/pages/checker.webp?v=e6f087135d96",
+          "version": "e6f087135d96",
           "width": 1200
         }
       ],

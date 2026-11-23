@@ -499,6 +499,13 @@ contents, declared source-file contents, the generating library version, and an 
 imported local modules, and literal `readFile(...)` or `new URL(...)` assets are discovered
 transitively. Dynamic paths should still be declared with `cache.sources` or per-card `sources`.
 
+Source identities inside `config.root` use relative paths with forward slashes. Copying a checkout,
+its generated outputs, and its cache to another directory preserves cache hits and versioned image
+URLs. External sources retain their absolute identity. Keep local paths in card data relative to
+`config.root` too: arbitrary card data and explicit config fingerprints are hashed as supplied.
+Real source edits, renames, config changes, and output corruption still invalidate the cache.
+The portable fingerprint format regenerates older caches once; subsequent moves reuse the outputs.
+
 Each manifest entry also stores the generated file's SHA-256 digest. `generate` and `check` therefore
 detect missing, manually edited, or corrupted output bytes even when all inputs are unchanged. A
 legacy manifest is read safely and upgraded by regeneration. If generated images are committed,

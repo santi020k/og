@@ -1,6 +1,17 @@
 # Changelog
 
-## Unreleased
+## 1.2.2 - 2026-10-25
+
+- Make source fingerprints relative to the configured project root so copied checkout caches and
+  versioned image URLs remain stable. Preserve source identity, content and output integrity checks;
+  existing caches regenerate once when adopting the portable fingerprint format.
+
+- Select website-only pull-request checks with the existing Turbo task graph while preserving
+  complete release validation and dependency-aware cache invalidation. Keep website function tests
+  in validation and refresh compatible development security dependencies.
+
+- Adopt Quality v2 shadow impact planning and persistent toolchain-isolated task caches,
+  preserving fresh security and production metadata checks and full release qualification.
 
 ## 1.2.1 - 2026-10-12
 

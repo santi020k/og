@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "global_inputs": [
+    "quality-impact.json",
+    ".quality-version",
+    "quality.yml",
+    ".github/",
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "turbo.json"
+  ],
+  "ignored_inputs": [],
+  "nodes": {
+    "package": {
+      "inputs": [
+        "packages/og/"
+      ],
+      "command": "pnpm",
+      "args": [
+        "--filter",
+        "@santi020k/og",
+        "run",
+        "validate"
+      ]
+    },
+    "website": {
+      "inputs": [
+        "apps/web/"
+      ],
+      "depends_on": [
+        "package"
+      ],
+      "command": "pnpm",
+      "args": [
+        "--filter",
+        "@santi020k/og-web",
+        "run",
+        "validate"
+      ]
+    },
+    "consumers": {
+      "inputs": [],
+      "depends_on": [
+        "package"
+      ],
+      "command": "pnpm",
+      "args": [
+        "run",
+        "test:consumers"
+      ]
+    },
+    "security": {
+      "inputs": [],
+      "always": true,
+      "command": "pnpm",
+      "args": [
+        "audit",
+        "--audit-level",
+        "moderate"
+      ]
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
+import path from 'node:path'
 
 const notScalar = Symbol('not-scalar')
 
@@ -57,9 +58,20 @@ const canonicalize = (value: unknown, seen: Set<object>): string => {
 
 export const stableStringify = (value: unknown): string => canonicalize(value, new Set())
 
+const sourceIdentity = (sourcePath: string, root: string): string => {
+  const relative = path.relative(root, sourcePath)
+  const outsideRoot = relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)
+
+  // Keep external files distinct without making their identity depend on the checkout.
+  return outsideRoot ?
+    `external:${sourcePath.split(path.sep).join('/')}` :
+    `project:${relative.split(path.sep).join('/')}`
+}
+
 export const hashValues = async (
   values: readonly unknown[],
-  sourcePaths: readonly string[]
+  sourcePaths: readonly string[],
+  root: string
 ): Promise<string> => {
   const hash = createHash('sha256')
 
@@ -69,8 +81,16 @@ export const hashValues = async (
     hash.update('\0')
   }
 
-  for (const sourcePath of [...new Set(sourcePaths)].sort()) {
-    hash.update(sourcePath)
+  const sources = [...new Set(sourcePaths.map(sourcePath => path.resolve(root, sourcePath)))]
+    .map(sourcePath => ({ identity: sourceIdentity(sourcePath, root), sourcePath }))
+    .sort((left, right) => {
+      if (left.identity < right.identity) return -1
+
+      return left.identity > right.identity ? 1 : 0
+    })
+
+  for (const { identity, sourcePath } of sources) {
+    hash.update(identity)
 
     hash.update('\0')
 

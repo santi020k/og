@@ -101,7 +101,8 @@ Package releases are deliberate. Run the **Release** GitHub workflow with a vers
 `packages/og/package.json`. Publishing uses npm trusted publishing through GitHub OIDC, without an
 npm token. Configure the package publisher for owner `santi020k`, repository `og`, workflow
 `release.yml`, and environment `release`, with direct publishing allowed. The workflow validates
-the repository, publishes with npm provenance, verifies the registry result, and then rebuilds
+the repository unless the CI push run on `main` already succeeded for the same commit, publishes
+with npm provenance, verifies the registry result, and then rebuilds
 registry-installed consumers before creating the matching Git tag and GitHub release. See
 the [release acceptance checklist](packages/og/docs/release-acceptance.md) for the complete gate.
 

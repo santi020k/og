@@ -8,29 +8,87 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Every main commit keeps its complete run; the release workflow reads that result.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+  CI_HEAD_SHA: ${{ github.sha }}
+
 jobs:
+  impact:
+    name: Quality v2 shadow plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Install pinned Quality
+        run: |
+          curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error https://raw.githubusercontent.com/santi020k/quality/ff490e9efbd5fdfbdb1e6c404f1741d04c57f585/install.sh -o "$RUNNER_TEMP/install-quality.sh"
+          QUALITY_INSTALL_DIR="$RUNNER_TEMP/quality-bin" sh "$RUNNER_TEMP/install-quality.sh" santi020k/quality v2.0.0
+          echo "$RUNNER_TEMP/quality-bin" >> "$GITHUB_PATH"
+      - name: Test impact policy
+        run: node --test packages/og/tests/quality-impact.node-test.mjs
+      - name: Record committed-source plan
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          args=(--full)
+          if [[ "$GITHUB_EVENT_NAME" == pull_request && -n "$CI_BASE_SHA" && "$HEAD_REF" != release/* && "$HEAD_REF" != changeset-release/* ]]; then
+            args=(--base "$CI_BASE_SHA" --head "$CI_HEAD_SHA" --comparison merge-base)
+          fi
+          quality impact plan "${args[@]}" --format json > "$RUNNER_TEMP/quality-impact.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quality-impact-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-impact.json
+          if-no-files-found: error
+          retention-days: 7
+
   validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - name: Set up pnpm workspace
-        uses: santi020k/quality/actions/setup-pnpm@eec1701b98bcc0b76d36af288ee78a0369cd84cc # v1
+        uses: santi020k/quality/actions/setup-pnpm@ff490e9efbd5fdfbdb1e6c404f1741d04c57f585 # v2.0.0
         with:
           pnpm-version: 10.32.1
           node-version: 22
-      - run: pnpm run validate
+          task-cache-path: .turbo/cache
+          task-cache-key: og-tasks
+      - name: Bind task cache to the resolved runtime
+        shell: bash
+        run: |
+          echo "QUALITY_TASK_RUNTIME=$(node --version)-$(pnpm --version)-$(node -p 'process.platform + "/" + process.arch')" >> "$GITHUB_ENV"
+
+      - run: pnpm run ci:check
 
   validate-node-24:
     name: Validate on Node.js 24
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - name: Set up pnpm workspace
-        uses: santi020k/quality/actions/setup-pnpm@eec1701b98bcc0b76d36af288ee78a0369cd84cc # v1
+        uses: santi020k/quality/actions/setup-pnpm@ff490e9efbd5fdfbdb1e6c404f1741d04c57f585 # v2.0.0
         with:
           pnpm-version: 10.32.1
           node-version: 24
-      - run: pnpm run validate
+          task-cache-path: .turbo/cache
+          task-cache-key: og-tasks
+      - name: Bind task cache to the resolved runtime
+        shell: bash
+        run: |
+          echo "QUALITY_TASK_RUNTIME=$(node --version)-$(pnpm --version)-$(node -p 'process.platform + "/" + process.arch')" >> "$GITHUB_ENV"
+
+      - run: pnpm run ci:check
 
   consumer-smoke:
     name: Test packed Astro, Next.js, and Node consumers
@@ -38,10 +96,38 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Select consumer checks
+        id: scope
+        run: node packages/og/scripts/ci-scope.mjs
       - name: Set up pnpm workspace
-        uses: santi020k/quality/actions/setup-pnpm@eec1701b98bcc0b76d36af288ee78a0369cd84cc # v1
+        if: steps.scope.outputs.package == 'true'
+        uses: santi020k/quality/actions/setup-pnpm@ff490e9efbd5fdfbdb1e6c404f1741d04c57f585 # v2.0.0
         with:
           pnpm-version: 10.32.1
           node-version: 22
+          task-cache-path: .turbo/cache
+          task-cache-key: og-tasks
+      - name: Bind task cache to the resolved runtime
+        if: steps.scope.outputs.package == 'true'
+        shell: bash
+        run: |
+          echo "QUALITY_TASK_RUNTIME=$(node --version)-$(pnpm --version)-$(node -p 'process.platform + "/" + process.arch')" >> "$GITHUB_ENV"
+
       - run: pnpm --filter @santi020k/og build
+        if: steps.scope.outputs.package == 'true'
       - run: pnpm run test:consumers
+        if: steps.scope.outputs.package == 'true'
+
+  gate:
+    name: Required checks
+    if: always()
+    needs: [impact, validate, validate-node-24, consumer-smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every validation job
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node --input-type=module -e 'const results = JSON.parse(process.env.RESULTS); if (Object.values(results).some(job => job.result !== "success")) process.exit(1);'
