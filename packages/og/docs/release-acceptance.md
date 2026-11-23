@@ -27,6 +27,8 @@ accepted only when every required item below has evidence from the release commi
   run covers the complete suite on Node.js 22 and 24 and the packed consumers. A missing, failed,
   cancelled, in-progress or unreadable result runs both steps in the release job. Set the
   `revalidate` input to repeat them regardless.
+- Every publication runs a fresh dependency audit at moderate severity or above, even when
+  the exact commit already has successful CI evidence. Audits are never restored from task caches.
 - Publication always rebuilds and validates the package through `prepack`.
 - The Release workflow repeats the consumer suite against the exact package downloaded from npm
   before creating the Git tag and GitHub release.

@@ -1,6 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalEnv": ["QUALITY_TASK_RUNTIME"],
+  "globalDependencies": [".github/workflows/**", "cspell.config.yaml", "quality-impact.json"],
   "tasks": {
     "build": {
       "env": ["PUBLIC_SITE_URL", "PUBLIC_TURNSTILE_SITE_KEY"],

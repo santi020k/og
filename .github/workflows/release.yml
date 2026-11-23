@@ -104,6 +104,9 @@ jobs:
         if: inputs.revalidate || steps.ci.outputs.trusted != 'true'
         run: pnpm run test:consumers
 
+      - name: Audit release dependencies
+        run: pnpm audit --audit-level moderate
+
       # prepack always rebuilds and validates the package that is published.
 
       - name: Publish package

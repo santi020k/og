@@ -77,7 +77,9 @@ test('the release skips validation only for confirmed evidence', () => {
 
   assert.equal(workflow.split('steps.ci.outputs.trusted').length, 3)
 
-  for (const step of ['Publish package', 'Verify published package', 'Test registry package in consumers']) {
+  assert.match(workflow, /name: Audit release dependencies\n {8}run: pnpm audit --audit-level moderate\n/u)
+
+  for (const step of ['Audit release dependencies', 'Publish package', 'Verify published package', 'Test registry package in consumers']) {
     assert.doesNotMatch(workflow.split(`      - name: ${step}\n`)[1].split('      - name: ')[0], /\n {8}if:/u, step)
   }
 })

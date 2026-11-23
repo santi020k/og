@@ -107,7 +107,7 @@ test('web validation tracks package build inputs in its task cache', () => {
   const git = (...args) => execFileSync('git', args, { cwd, env, stdio: 'pipe' })
 
   try {
-    for (const path of ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'turbo.json', 'apps/web/package.json', 'packages/og/package.json', 'packages/og/src/version.ts']) {
+    for (const path of ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'turbo.json', 'apps/web/package.json', 'packages/og/package.json', 'packages/og/src/version.ts', '.github/workflows/ci.yml', '.github/workflows/release.yml', 'cspell.config.yaml', 'quality-impact.json']) {
       mkdirSync(join(cwd, path, '..'), { recursive: true })
 
       writeFileSync(join(cwd, path), readFileSync(join(root, path)))
@@ -123,8 +123,8 @@ test('web validation tracks package build inputs in its task cache', () => {
 
     git('commit', '-qm', 'fixture')
 
-    const graph = () => JSON.parse(execFileSync(join(root, 'node_modules/.bin/turbo'), ['run', 'ci:web', '--filter=@santi020k/og-web', '--dry=json'], {
-      cwd, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']
+    const graph = (runtime = 'node22-pnpm10-linux-x64') => JSON.parse(execFileSync(join(root, 'node_modules/.bin/turbo'), ['run', 'ci:web', 'validate', 'test', '--dry=json'], {
+      cwd, env: { ...env, QUALITY_TASK_RUNTIME: runtime }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']
     }))
 
     const websiteTask = result => result.tasks.find(task => task.taskId === '@santi020k/og-web#ci:web')
@@ -135,7 +135,39 @@ test('web validation tracks package build inputs in its task cache', () => {
     writeFileSync(join(cwd, 'packages/og/src/version.ts'), 'export const GENERATOR_VERSION = \'changed\';\n')
 
     assert.notEqual(websiteTask(graph()).hash, before.hash)
+
+    const identities = result => new Map(result.tasks.map(task => [task.taskId, task.hash]))
+    let previous = identities(graph())
+
+    for (const path of ['.github/workflows/ci.yml', '.github/workflows/release.yml', 'cspell.config.yaml', 'quality-impact.json']) {
+      writeFileSync(join(cwd, path), `${readFileSync(join(cwd, path), 'utf8')}\n`)
+
+      const changed = identities(graph())
+
+      for (const [id, hash] of changed) assert.notEqual(hash, previous.get(id), `${path}: ${id}`)
+
+      previous = changed
+    }
+
+    for (const [id, hash] of identities(graph('node24-pnpm10-linux-x64'))) {
+      assert.notEqual(hash, previous.get(id), `runtime: ${id}`)
+    }
   } finally {
     rmSync(cwd, { recursive: true, force: true })
+  }
+})
+
+test('every cached workflow exports the actual runtime before using Turbo', () => {
+  for (const file of ['ci.yml', 'release.yml', 'deploy-web.yml', 'site-inspection.yml']) {
+    const source = readFileSync(new URL(`../../../.github/workflows/${file}`, import.meta.url), 'utf8')
+    const setups = source.split('uses: santi020k/quality/actions/setup-pnpm@').slice(1)
+
+    assert.ok(setups.length > 0, file)
+
+    for (const setup of setups) {
+      assert.match(setup, /QUALITY_TASK_RUNTIME=\$\(node --version\)-\$\(pnpm --version\)-/u, file)
+
+      assert.match(setup, /node -p 'process.platform \+ "\/" \+ process.arch'\)" >> "\$GITHUB_ENV"/u, file)
+    }
   }
 })

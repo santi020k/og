@@ -105,7 +105,10 @@ Persisted Turbo task hashes include `QUALITY_TASK_RUNTIME`, captured after setup
 from the actual Node and pnpm versions, platform, and architecture. This prevents
 a broad cache restore from reusing outputs after a runtime patch changes, even
 when the declared Node selector remains unchanged. Local runs without that
-variable use a separate task identity.
+variable use a separate task identity. Shared workflow, spelling, and impact-policy files
+also invalidate task hashes because package regression checks consume those root files.
+Cache regression tests exercise real Turbo hashes and verify runtime exports in every
+cached workflow.
 
 The release uses Astro 7.4.12 and scoped minimatch 11.0.9 / import-x 4.18.1
 security updates. The public OG runtime floor remains unchanged. Dependency-security
