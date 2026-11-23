@@ -10,10 +10,8 @@ import { findReleaseEvidence, isReleaseEvidence } from '../scripts/verify-ci-evi
 
 const sha = 'a'.repeat(40)
 const evidence = { id: 7, head_sha: sha, path: '.github/workflows/ci.yml', event: 'push', head_branch: 'main', status: 'completed', conclusion: 'success' }
-
-const respond = (body, ok = true, status = 200) => () => {
-  return Promise.resolve({ ok, status, json: () => Promise.resolve(body) })
-}
+const response = (body, ok, status) => ({ ok, status, json: () => Promise.resolve(body) })
+const respond = (body, ok = true, status = 200) => () => Promise.resolve(response(body, ok, status))
 
 test('only a completed successful push run on main for the same commit is evidence', () => {
   assert.equal(isReleaseEvidence(evidence, sha), true)
