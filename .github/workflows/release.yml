@@ -95,28 +95,36 @@ jobs:
         run: npm publish --access public
 
       - name: Verify published package
+        shell: bash
         env:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
-          MAX_ATTEMPTS=30
+          # Ask the registry directly: the exact version document and the install
+          # manifest that the consumer test resolves next. Back off from 2 to 10 seconds.
+          REGISTRY_PACKAGE=https://registry.npmjs.org/@santi020k%2fog
+          DEADLINE=$((SECONDS + 300))
+          DELAY=2
 
-          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
-            PUBLISHED_VERSION=$(npm view "@santi020k/og@$RELEASE_VERSION" version 2>/dev/null || true)
-            if [ "$PUBLISHED_VERSION" = "$RELEASE_VERSION" ]; then
-              echo "Verified @santi020k/og@$RELEASE_VERSION in the npm registry."
-              exit 0
+          published() {
+            curl --fail --silent --show-error --max-time 15 "$REGISTRY_PACKAGE/$RELEASE_VERSION" \
+              | jq --exit-status --arg version "$RELEASE_VERSION" '.version == $version' >/dev/null \
+              && curl --fail --silent --show-error --max-time 15 \
+                --header 'Accept: application/vnd.npm.install-v1+json' "$REGISTRY_PACKAGE" \
+              | jq --exit-status --arg version "$RELEASE_VERSION" '.versions[$version].version == $version' >/dev/null
+          }
+
+          until published; do
+            if [ $((SECONDS + DELAY)) -gt "$DEADLINE" ]; then
+              echo "The npm registry did not return @santi020k/og@$RELEASE_VERSION after five minutes."
+              exit 1
             fi
 
-            if [ "$attempt" -eq "$MAX_ATTEMPTS" ]; then
-              break
-            fi
-
-            echo "Registry verification attempt $attempt/$MAX_ATTEMPTS did not find the package yet; retrying in 10 seconds."
-            sleep 10
+            echo "Registry does not list @santi020k/og@$RELEASE_VERSION yet; retrying in $DELAY seconds."
+            sleep "$DELAY"
+            DELAY=$((DELAY * 2 > 10 ? 10 : DELAY * 2))
           done
 
-          echo "The npm registry did not return @santi020k/og@$RELEASE_VERSION after five minutes."
-          exit 1
+          echo "Verified @santi020k/og@$RELEASE_VERSION in the npm registry."
 
       - name: Test registry package in consumers
         env:
